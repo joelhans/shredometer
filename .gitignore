@@ -1,3 +1,5 @@
 build/
 *.hex
 *.elf
+.venv/
+__pycache__/
