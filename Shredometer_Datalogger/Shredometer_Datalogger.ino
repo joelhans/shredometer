@@ -30,6 +30,10 @@ sensors_event_t a, m, g, temp;
 // Initialize a string for the fileName
 String fileName = "";
 
+// The open datalog file. Opened once in setup(), kept open for the
+// whole run, and flushed periodically instead of closed each write.
+File dataFile;
+
 // Initialize the LED matrix
 Adafruit_7segment matrix = Adafruit_7segment();
 
@@ -50,9 +54,9 @@ void setupSensor()
 {
   // 1.) Set the accelerometer range
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
-  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
+  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_8G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
+  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
   
   // 2.) Set the magnetometer sensitivity
   //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
@@ -66,20 +70,17 @@ void setupSensor()
   //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
 }
 
-void writeDataToFile(String fileName, String dataString) {
-  // open the file
-  File dataFile = SD.open(fileName, FILE_WRITE);
-
-  // if the file is available, write to it, then close the file:
+void writeDataToFile(String dataString) {
+  // write to the already-open file. dataString already ends in "\n",
+  // so use print(), not println(), to avoid a doubled line ending.
   if (dataFile) {
-    dataFile.println(dataString);
-    dataFile.close();
+    dataFile.print(dataString);
     // print to the serial port too:
-    Serial.println(dataString);
+    Serial.print(dataString);
   }
   // if the file isn't open, pop up an error:
   else {
-    Serial.println("error opening datalog");
+    Serial.println("error: datalog file not open");
   }
 }
 
@@ -125,24 +126,37 @@ void initLedMatrix(int initValType) {
   matrix.writeDisplay();
 }
 
+// Write a shred score into a pair of adjacent digit positions.
+// Below 10, shows one decimal place (e.g. "7.3"). At 10 and above, the
+// display can't fit both a whole number >9 and a decimal digit, so it
+// drops the decimal and shows the rounded whole number instead (e.g.
+// "12"), clamped to the two-digit max of 99.
+void writeScoreDigits(uint8_t posInt, uint8_t posDec, float score) {
+  boolean drawDot = true;
+  if (score < 10.0) {
+    uint16_t intDigit = uint16_t(score);
+    uint16_t decDigit = uint16_t(score * 10) % 10;
+    matrix.writeDigitNum(posInt, intDigit, drawDot);
+    matrix.writeDigitNum(posDec, decDigit, !drawDot);
+  } else {
+    uint16_t rounded = uint16_t(score + 0.5);
+    if (rounded > 99) rounded = 99;
+    matrix.writeDigitNum(posInt, rounded / 10, !drawDot);
+    matrix.writeDigitNum(posDec, rounded % 10, !drawDot);
+  }
+}
+
 // Function to update the LED matrix to display shred scores
 void updateLedMatrix() {
-  boolean drawDot = true;
-  uint16_t val4 = uint16_t(maxShredScore*10) % 10;
-  uint16_t val3 = maxShredScore;
-  matrix.writeDigitNum(4, val4, !drawDot);
-  matrix.writeDigitNum(3, val3, drawDot);
+  writeScoreDigits(0, 1, instShredScore);
   matrix.drawColon(true);
-  uint16_t val1 = uint16_t(instShredScore*10) % 10;
-  uint16_t val0 = instShredScore;
-  matrix.writeDigitNum(1, val1, !drawDot);
-  matrix.writeDigitNum(0, val0, drawDot);
+  writeScoreDigits(3, 4, maxShredScore);
   matrix.writeDisplay();
 }
 
 void setup() {
   // Open serial communications and wait for port to open:
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
@@ -195,9 +209,17 @@ void setup() {
   // Find a unique file name
   setFileName();
 
+  // Open the file once. It stays open for the rest of the run.
+  dataFile = SD.open(fileName, FILE_WRITE);
+  if (!dataFile) {
+    Serial.println("error opening datalog");
+    // don't do anything more
+    while (1);
+  }
+
   // Write table header string
   String headerString = "Time Elapsed (ms), Accel X (m/s^2), Accel Y (m/s^2), Accel Z (m/s^2), Mag X (uT), Mag Y (uT), Mag Z (uT), Gyro X (rad/s), Gyro Y (rad/s), Gyro Z (rad/s)\n";
-  writeDataToFile(fileName, headerString);
+  writeDataToFile(headerString);
 
   // Get ten sensor events that are not recorded, to clear the buffer
   for (int ii=0; ii<10; ii++){
@@ -233,7 +255,7 @@ void loop() {
   dataString += g.gyro.z;  dataString += "\n";
 
   // Write the dataString to the file
-  writeDataToFile(fileName, dataString);
+  writeDataToFile(dataString);
 
   // Update the varShredScore
   varShredScore = sqrt(sq(a.acceleration.x) + sq(a.acceleration.y) + sq(a.acceleration.z))/9.8;
@@ -253,6 +275,9 @@ void loop() {
     instShredScore = 0.0;
     // Reset the counter
     counter = 0;
+    // Flush buffered writes to the card. This caps data loss on power
+    // loss to the last maxCounterVal samples.
+    dataFile.flush();
   }
   
 }
