@@ -75,7 +75,7 @@ arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:nano Shredometer_Datalogge
 ### Monitor
 
 ```sh
-arduino-cli monitor -p /dev/ttyUSB0 -c baudrate=9600
+arduino-cli monitor -p /dev/ttyUSB0 -c baudrate=115200
 ```
 
 ## Usage
@@ -90,11 +90,28 @@ arduino-cli monitor -p /dev/ttyUSB0 -c baudrate=9600
 
 ## Analyzing logs
 
-`scripts/analyze_log.py` parses a `DL_N.TXT` file, prints summary stats, and
-plots acceleration and shred score over time.
+`scripts/analyze_log.py` parses a `DL_N.TXT` file and prints summary stats
+(sample count, duration, sample rate, peak/mean shred score).
 
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r scripts/requirements.txt
-.venv/bin/python scripts/analyze_log.py path/to/DL_0.TXT -o plot.png
+.venv/bin/python scripts/analyze_log.py path/to/DL_0.TXT
 ```
+
+It can also produce output in two formats:
+
+- `-o plot.png` — a static matplotlib plot of acceleration and shred score.
+- `-H report.html` — a self-contained, interactive HTML report (open it in
+  any browser, no server needed): acceleration and shred-score charts with
+  hover tooltips, drag-to-zoom, a per-axis legend, and a per-minute data
+  table. Uses `scripts/report_template.html` as its template.
+
+```sh
+.venv/bin/python scripts/analyze_log.py path/to/DL_0.TXT -H report.html
+```
+
+Pass `--accel-range` (default `4`, matching the sketch's
+`LSM9DS1_ACCELRANGE_4G` setting) if you change the firmware's accelerometer
+range — it controls the report's clipping detection and the reference line
+on the shred-score chart.

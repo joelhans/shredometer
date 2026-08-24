@@ -1,0 +1,1062 @@
+<title>Shredometer Ride Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:        #f9f9f7;
+    --surface:       #fcfcfb;
+    --surface-2:     #f2f1ec;
+    --ink:           #0b0b0b;
+    --ink-secondary: #52514e;
+    --ink-muted:     #898781;
+    --line:          #e1e0d9;
+    --line-strong:   #c3c2b7;
+    --accent:        #2a78d6;
+    --accent-wash:   rgba(42,120,214,0.10);
+    --series-2:      #eb6834;
+    --series-3:      #1baf7a;
+    --status-warning:  #c98500;
+    --status-good:     #0ca30c;
+    --status-good-wash: rgba(12,163,12,0.07);
+    --status-critical: #d03b3b;
+    --status-critical-wash: rgba(208,59,59,0.08);
+    --border:        rgba(11,11,11,0.10);
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 8px 24px -12px rgba(11,11,11,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:        #0d0d0d;
+      --surface:       #1a1a19;
+      --surface-2:     #212120;
+      --ink:           #ffffff;
+      --ink-secondary: #c3c2b7;
+      --ink-muted:     #898781;
+      --line:          #2c2c2a;
+      --line-strong:   #383835;
+      --accent:        #3987e5;
+      --accent-wash:   rgba(57,135,229,0.16);
+      --series-2:      #d95926;
+      --series-3:      #199e70;
+      --status-warning:  #fab219;
+      --status-good:     #0ca30c;
+      --status-good-wash: rgba(12,163,12,0.14);
+      --status-critical: #e66767;
+      --status-critical-wash: rgba(230,103,103,0.12);
+      --border:        rgba(255,255,255,0.12);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:        #0d0d0d;
+    --surface:       #1a1a19;
+    --surface-2:     #212120;
+    --ink:           #ffffff;
+    --ink-secondary: #c3c2b7;
+    --ink-muted:     #898781;
+    --line:          #2c2c2a;
+    --line-strong:   #383835;
+    --accent:        #3987e5;
+    --accent-wash:   rgba(57,135,229,0.16);
+    --series-2:      #d95926;
+    --series-3:      #199e70;
+    --status-warning:  #fab219;
+    --status-good:     #0ca30c;
+    --status-good-wash: rgba(12,163,12,0.14);
+    --status-critical: #e66767;
+    --status-critical-wash: rgba(230,103,103,0.12);
+    --border:        rgba(255,255,255,0.12);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .mono { font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  a { color: var(--accent); }
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px 72px;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    position: relative;
+    padding: 56px 0 36px;
+    overflow: hidden;
+  }
+  .motif-svg {
+    position: absolute;
+    left: 0; right: 0; bottom: 8px;
+    width: 100%;
+    height: 84px;
+    display: block;
+  }
+  .motif-svg path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    opacity: 0.16;
+  }
+  .eyebrow {
+    position: relative;
+    margin: 0 0 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .masthead h1 {
+    position: relative;
+    margin: 0 0 14px;
+    font-family: 'Rajdhani', 'Arial Narrow', sans-serif;
+    font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.02;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+  }
+  .session-meta {
+    position: relative;
+    margin: 0;
+    color: var(--ink-secondary);
+    font-size: 1.02rem;
+  }
+  .session-meta .sep { color: var(--line-strong); margin: 0 0.55em; }
+
+  /* ---------- KPI row ---------- */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 28px 0 40px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+  }
+  .kpi-label {
+    margin: 0 0 10px;
+    font-size: 0.76rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .kpi-value {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.7rem, 3vw, 2.3rem);
+    line-height: 1;
+    color: var(--ink);
+  }
+  .kpi-value .unit {
+    font-size: 0.5em;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    margin-left: 0.2em;
+  }
+  .kpi-sub {
+    margin: 8px 0 0;
+    font-size: 0.84rem;
+    color: var(--ink-secondary);
+  }
+  .kpi-accent .kpi-value { color: var(--accent); }
+  .kpi-flag-critical {
+    background: var(--status-critical-wash);
+    border-color: color-mix(in srgb, var(--status-critical) 35%, var(--border));
+  }
+  .kpi-flag-critical .kpi-value { color: var(--status-critical); font-size: clamp(1.4rem, 2.4vw, 1.85rem); }
+  .kpi-flag-critical .kpi-label { color: var(--status-critical); opacity: 0.85; }
+  .kpi-flag-good {
+    background: var(--status-good-wash);
+    border-color: color-mix(in srgb, var(--status-good) 30%, var(--border));
+  }
+  .kpi-flag-good .kpi-value { color: var(--status-good); font-size: clamp(1.4rem, 2.4vw, 1.85rem); }
+  .kpi-flag-good .kpi-label { color: var(--status-good); opacity: 0.85; }
+
+  /* ---------- Chart cards ---------- */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 22px 22px 10px;
+    margin-bottom: 20px;
+  }
+  .chart-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .chart-card h2 {
+    margin: 0 0 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: 0.01em;
+  }
+  .chart-sub {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--ink-secondary);
+    max-width: 56ch;
+  }
+  .chart-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .legend {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 5px 9px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--ink-secondary);
+    cursor: pointer;
+  }
+  .legend-item:hover { background: var(--surface-2); }
+  .legend-item .swatch {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: var(--sw, var(--accent));
+    flex: none;
+  }
+  .legend-item.line-key .swatch {
+    width: 12px; height: 2px; border-radius: 1px;
+  }
+  .legend-item[aria-pressed="false"] { color: var(--ink-muted); opacity: 0.55; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--line-strong); color: var(--ink); }
+  .btn-accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .btn[hidden] { display: none; }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    touch-action: none;
+  }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
+
+  .grid-line { stroke: var(--line); stroke-width: 1; shape-rendering: crispEdges; }
+  .axis-tick { stroke: var(--line-strong); stroke-width: 1; }
+  .axis-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    fill: var(--ink-muted);
+  }
+  .crosshair {
+    stroke: var(--ink-secondary);
+    stroke-width: 1;
+    opacity: 0.55;
+    display: none;
+    pointer-events: none;
+  }
+  .zoom-selection {
+    fill: var(--accent-wash);
+    stroke: var(--accent);
+    stroke-width: 1;
+    display: none;
+    pointer-events: none;
+  }
+  .zoom-overlay { fill: transparent; cursor: crosshair; }
+
+  .band-ax, .band-ay, .band-az { fill: var(--accent); opacity: 0.10; }
+  .band-ay { fill: var(--series-2); }
+  .band-az { fill: var(--series-3); }
+  .line-ax { stroke: var(--accent); }
+  .line-ay { stroke: var(--series-2); }
+  .line-az { stroke: var(--series-3); }
+  .line-ax, .line-ay, .line-az {
+    fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round;
+  }
+  .band-shred { fill: var(--accent); opacity: 0.12; }
+  .line-shred-max { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .line-shred-mean { fill: none; stroke: var(--ink-muted); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.75; }
+  .ceiling-line { stroke: var(--status-warning); stroke-width: 1; opacity: 0.85; }
+  .ceiling-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: var(--status-warning);
+    text-anchor: end;
+  }
+
+  .chart-caption {
+    margin: 2px 0 16px;
+    font-size: 0.76rem;
+    color: var(--ink-muted);
+  }
+
+  /* ---------- Tooltip ---------- */
+  .tooltip {
+    position: fixed;
+    z-index: 40;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    pointer-events: none;
+    min-width: 168px;
+  }
+  .tooltip[hidden] { display: none; }
+  .tooltip-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+  }
+  .tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 1px 0;
+  }
+  .tooltip-key { display: flex; align-items: center; gap: 6px; color: var(--ink-secondary); }
+  .tooltip-key .keyline { width: 10px; height: 2px; border-radius: 1px; flex: none; }
+  .tooltip-val { font-family: 'IBM Plex Mono', monospace; font-weight: 500; color: var(--ink); }
+
+  /* ---------- Table ---------- */
+  .table-section { margin: 8px 0 36px; }
+  .table-scroll {
+    margin-top: 14px;
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.84rem;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface-2);
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child, tbody td:first-child { text-align: left; }
+  tbody td {
+    text-align: right;
+    padding: 6px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-secondary);
+    border-bottom: 1px solid var(--line);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface-2); color: var(--ink); }
+
+  /* ---------- Footer ---------- */
+  .foot {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    color: var(--ink-secondary);
+    font-size: 0.86rem;
+  }
+  .foot p { margin: 0 0 8px; max-width: 72ch; }
+  .foot p:last-child { margin-bottom: 0; }
+  .foot p[hidden] { display: none; }
+
+  @media (max-width: 720px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .masthead { padding: 40px 0 28px; }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <svg class="motif-svg" viewBox="0 0 1000 84" preserveAspectRatio="none" aria-hidden="true">
+      <path id="motif-path" d=""></path>
+    </svg>
+    <p class="eyebrow">Shredometer datalogger &middot; <span id="meta-eyebrow-source"></span></p>
+    <h1>Ride Report</h1>
+    <p class="session-meta" id="session-meta"></p>
+  </header>
+
+  <section class="kpi-row" aria-label="Ride summary">
+    <div class="kpi">
+      <p class="kpi-label">Duration</p>
+      <p class="kpi-value tnum" id="kpi-duration"></p>
+      <p class="kpi-sub" id="kpi-duration-sub"></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Samples</p>
+      <p class="kpi-value tnum" id="kpi-samples"></p>
+      <p class="kpi-sub" id="kpi-samples-sub"></p>
+    </div>
+    <div class="kpi kpi-accent">
+      <p class="kpi-label">Peak shred score</p>
+      <p class="kpi-value tnum" id="kpi-peak"></p>
+      <p class="kpi-sub" id="kpi-peak-sub"></p>
+    </div>
+    <div class="kpi" id="kpi-flag-tile">
+      <p class="kpi-label" id="kpi-flag-label">Sensor range</p>
+      <p class="kpi-value tnum" id="kpi-flag-value"></p>
+      <p class="kpi-sub" id="kpi-flag-sub"></p>
+    </div>
+  </section>
+
+  <section class="chart-card" aria-labelledby="accel-title">
+    <div class="chart-card-head">
+      <div>
+        <h2 id="accel-title">Acceleration</h2>
+        <p class="chart-sub" id="accel-sub">X / Y / Z, in m/s&sup2;. Band is the range within each window, line is the mean.</p>
+      </div>
+      <div class="chart-actions">
+        <div class="legend" id="legend-accel">
+          <button class="legend-item" type="button" data-series="ax" aria-pressed="true" style="--sw:var(--accent)"><span class="swatch"></span>X</button>
+          <button class="legend-item" type="button" data-series="ay" aria-pressed="true" style="--sw:var(--series-2)"><span class="swatch"></span>Y</button>
+          <button class="legend-item" type="button" data-series="az" aria-pressed="true" style="--sw:var(--series-3)"><span class="swatch"></span>Z</button>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg id="svg-accel" viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="Acceleration on X, Y and Z axes over the ride">
+        <g id="grid-accel"></g>
+        <path class="band-ax" id="band-ax" d=""></path>
+        <path class="band-ay" id="band-ay" d=""></path>
+        <path class="band-az" id="band-az" d=""></path>
+        <path class="line-ax" id="line-ax" d=""></path>
+        <path class="line-ay" id="line-ay" d=""></path>
+        <path class="line-az" id="line-az" d=""></path>
+        <g id="yaxis-accel"></g>
+        <g id="xaxis-accel"></g>
+        <line class="crosshair" id="crosshair-accel" x1="0" y1="0" x2="0" y2="0"></line>
+      </svg>
+    </div>
+    <p class="chart-caption">Drag on the shred-score chart below to zoom into a time range &mdash; both charts stay in sync.</p>
+  </section>
+
+  <section class="chart-card" aria-labelledby="shred-title">
+    <div class="chart-card-head">
+      <div>
+        <h2 id="shred-title">Shred score</h2>
+        <p class="chart-sub">Acceleration magnitude in g. Peak line matches what the onboard display shows; thin line is the window mean.</p>
+      </div>
+      <div class="chart-actions">
+        <div class="legend">
+          <span class="legend-item line-key"><span class="swatch" style="background:var(--accent)"></span>Peak</span>
+          <span class="legend-item line-key"><span class="swatch" style="background:var(--ink-muted)"></span>Mean</span>
+        </div>
+        <button class="btn btn-accent" id="reset-zoom" type="button" hidden>Reset zoom</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg id="svg-shred" viewBox="0 0 1000 220" preserveAspectRatio="none" role="img" aria-label="Shred score over the ride, draggable to zoom">
+        <g id="grid-shred"></g>
+        <path class="band-shred" id="band-shred" d=""></path>
+        <line class="ceiling-line" id="ceiling-line" x1="0" y1="0" x2="0" y2="0"></line>
+        <text class="ceiling-label" id="ceiling-label" x="0" y="0"></text>
+        <path class="line-shred-mean" id="line-shred-mean" d=""></path>
+        <path class="line-shred-max" id="line-shred-max" d=""></path>
+        <g id="yaxis-shred"></g>
+        <g id="xaxis-shred"></g>
+        <rect class="zoom-selection" id="zoom-selection" x="0" y="0" width="0" height="0"></rect>
+        <line class="crosshair" id="crosshair-shred" x1="0" y1="0" x2="0" y2="0"></line>
+        <rect class="zoom-overlay" id="zoom-overlay" x="0" y="0" width="0" height="0"></rect>
+      </svg>
+    </div>
+  </section>
+
+  <div id="tooltip" class="tooltip" role="status" aria-live="polite" hidden>
+    <div class="tooltip-time mono" id="tt-time"></div>
+    <div class="tooltip-row"><span class="tooltip-key"><span class="keyline" style="background:var(--accent)"></span>Accel X</span><span class="tooltip-val" id="tt-ax"></span></div>
+    <div class="tooltip-row"><span class="tooltip-key"><span class="keyline" style="background:var(--series-2)"></span>Accel Y</span><span class="tooltip-val" id="tt-ay"></span></div>
+    <div class="tooltip-row"><span class="tooltip-key"><span class="keyline" style="background:var(--series-3)"></span>Accel Z</span><span class="tooltip-val" id="tt-az"></span></div>
+    <div class="tooltip-row"><span class="tooltip-key"><span class="keyline" style="background:var(--accent)"></span>Shred peak</span><span class="tooltip-val" id="tt-shred-max"></span></div>
+    <div class="tooltip-row"><span class="tooltip-key"><span class="keyline" style="background:var(--ink-muted)"></span>Shred mean</span><span class="tooltip-val" id="tt-shred-mean"></span></div>
+  </div>
+
+  <section class="table-section">
+    <button class="btn" id="toggle-table" type="button" aria-expanded="false">Show data table</button>
+    <div id="table-wrap" hidden>
+      <div class="table-scroll">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Samples</th>
+              <th scope="col">Mean accel (m/s&sup2;)</th>
+              <th scope="col">Mean shred (g)</th>
+              <th scope="col">Peak shred (g)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p id="foot-clip-note" hidden></p>
+    <p id="foot-repro-note"></p>
+  </footer>
+</div>
+
+<script id="chart-data" type="application/json">%%CHART_DATA%%</script>
+<script>
+(function () {
+  "use strict";
+  var svgNS = "http://www.w3.org/2000/svg";
+  var DATA = JSON.parse(document.getElementById("chart-data").textContent);
+  var buckets = DATA.buckets;
+  var summary = DATA.summary;
+  var tableRows = DATA.table;
+  var meta = DATA.meta;
+
+  var shredDomainMax = Math.max(2, Math.ceil((summary.maxShred * 1.15) / 2) * 2);
+
+  var ACCEL = { vb: { w: 1000, h: 300 }, margin: { left: 46, right: 16, top: 14, bottom: 30 }, yDomain: [-42, 42] };
+  var SHRED = { vb: { w: 1000, h: 220 }, margin: { left: 46, right: 16, top: 14, bottom: 34 }, yDomain: [0, shredDomainMax] };
+
+  var domain = [0, summary.durationS];
+  var seriesVisible = { ax: true, ay: true, az: true };
+  var currentView = buckets;
+
+  function fmtTime(t) {
+    var s = Math.round(t);
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    var mm = (m < 10 ? "0" : "") + m;
+    var ss = (sec < 10 ? "0" : "") + sec;
+    if (h > 0) return h + ":" + mm + ":" + ss;
+    return m + ":" + ss;
+  }
+  function fmtDurationWords(t) {
+    var s = Math.round(t);
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (h > 0) return h + "h " + m + "m";
+    if (m > 0) return m + "m " + sec + "s";
+    return sec + "s";
+  }
+  function fmtMinuteLabel(m) {
+    var h = Math.floor(m / 60), mm = m % 60;
+    var mmStr = (mm < 10 ? "0" : "") + mm;
+    return h > 0 ? (h + ":" + mmStr + ":00") : (mm + ":00");
+  }
+  function fmtNum(n) { return n.toLocaleString("en-US"); }
+
+  function populateMeta() {
+    document.title = "Shredometer Ride Report — " + meta.sourceFile;
+
+    var eyebrow = document.getElementById("meta-eyebrow-source");
+    eyebrow.textContent = meta.sourceFile;
+
+    var sm = document.getElementById("session-meta");
+    sm.textContent = "";
+    var parts = [
+      fmtDurationWords(summary.durationS) + " logged",
+      fmtNum(summary.totalSamples) + " samples",
+      "read from " + meta.sourceFile
+    ];
+    parts.forEach(function (text, i) {
+      if (i > 0) {
+        var sep = document.createElement("span");
+        sep.className = "sep";
+        sep.textContent = "·";
+        sm.appendChild(sep);
+      }
+      var span = document.createElement("span");
+      span.className = "tnum";
+      span.textContent = text;
+      sm.appendChild(span);
+    });
+
+    document.getElementById("kpi-duration").textContent = fmtDurationWords(summary.durationS);
+    document.getElementById("kpi-duration-sub").textContent = fmtNum(Math.round(summary.durationS)) + " seconds logged";
+
+    document.getElementById("kpi-samples").textContent = fmtNum(summary.totalSamples);
+    document.getElementById("kpi-samples-sub").textContent = "~" + summary.sampleRateHz.toFixed(1) + " Hz average rate";
+
+    document.getElementById("kpi-peak").textContent = summary.maxShred.toFixed(2) + "g";
+    document.getElementById("kpi-peak-sub").textContent = "hit at " + fmtTime(summary.peakTimeS) + " in";
+
+    var flagTile = document.getElementById("kpi-flag-tile");
+    var flagLabel = document.getElementById("kpi-flag-label");
+    var flagValue = document.getElementById("kpi-flag-value");
+    var flagSub = document.getElementById("kpi-flag-sub");
+    flagValue.textContent = "±" + meta.accelRangeG + "G";
+    if (meta.clipped) {
+      flagTile.className = "kpi kpi-flag-critical";
+      flagLabel.textContent = "Sensor ceiling";
+      flagSub.textContent = "hard hits are clipping — see note below";
+    } else {
+      flagTile.className = "kpi kpi-flag-good";
+      flagLabel.textContent = "Sensor range";
+      flagSub.textContent = "peaks stayed under the ceiling";
+    }
+
+    var clipNote = document.getElementById("foot-clip-note");
+    if (meta.clipped) {
+      clipNote.hidden = false;
+      clipNote.textContent = "The accelerometer is configured for a ±" + meta.accelRangeG +
+        "G range. Every burst that touches the ceiling above is clipped at the sensor itself — " +
+        "the true peaks during hard hits were likely higher than " + summary.maxShred.toFixed(2) +
+        "g. A wider range setting would trade resolution for headroom.";
+    } else {
+      clipNote.hidden = true;
+    }
+
+    document.getElementById("foot-repro-note").textContent =
+      "Generated from " + meta.sourceFile + " with scripts/analyze_log.py --html. Re-run it on any other DL_N.TXT file for the same breakdown.";
+  }
+
+  function plotRect(cfg) {
+    return {
+      x: cfg.margin.left,
+      y: cfg.margin.top,
+      w: cfg.vb.w - cfg.margin.left - cfg.margin.right,
+      h: cfg.vb.h - cfg.margin.top - cfg.margin.bottom
+    };
+  }
+  function xScale(cfg, t) {
+    var r = plotRect(cfg);
+    return r.x + (t - domain[0]) / (domain[1] - domain[0]) * r.w;
+  }
+  function xInvert(cfg, px) {
+    var r = plotRect(cfg);
+    var frac = (px - r.x) / r.w;
+    return domain[0] + frac * (domain[1] - domain[0]);
+  }
+  function yScale(cfg, v) {
+    var r = plotRect(cfg);
+    var d0 = cfg.yDomain[0], d1 = cfg.yDomain[1];
+    return r.y + (1 - (v - d0) / (d1 - d0)) * r.h;
+  }
+
+  function pathLine(cfg, key, view) {
+    if (!view.length) return "";
+    var d = "";
+    for (var i = 0; i < view.length; i++) {
+      var x = xScale(cfg, view[i].t).toFixed(2);
+      var y = yScale(cfg, view[i][key]).toFixed(2);
+      d += (i === 0 ? "M" : "L") + x + "," + y + " ";
+    }
+    return d;
+  }
+  function pathBand(cfg, minKey, maxKey, view) {
+    if (!view.length) return "";
+    var d = "";
+    for (var i = 0; i < view.length; i++) {
+      var x = xScale(cfg, view[i].t).toFixed(2);
+      var y = yScale(cfg, view[i][maxKey]).toFixed(2);
+      d += (i === 0 ? "M" : "L") + x + "," + y + " ";
+    }
+    for (var j = view.length - 1; j >= 0; j--) {
+      var x2 = xScale(cfg, view[j].t).toFixed(2);
+      var y2 = yScale(cfg, view[j][minKey]).toFixed(2);
+      d += "L" + x2 + "," + y2 + " ";
+    }
+    return d + "Z";
+  }
+
+  function timeTicks() {
+    var span = domain[1] - domain[0];
+    var steps = [15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400];
+    var step = steps[steps.length - 1];
+    for (var i = 0; i < steps.length; i++) {
+      if (span / steps[i] <= 7) { step = steps[i]; break; }
+    }
+    var first = Math.ceil(domain[0] / step) * step;
+    var ticks = [];
+    for (var t = first; t <= domain[1] + 1e-6; t += step) ticks.push(t);
+    return ticks;
+  }
+
+  function el(tag) { return document.createElementNS(svgNS, tag); }
+
+  function renderGrid(gridGroupId, yAxisGroupId, cfg, yTicks) {
+    var grid = document.getElementById(gridGroupId);
+    var axis = document.getElementById(yAxisGroupId);
+    grid.textContent = "";
+    axis.textContent = "";
+    var r = plotRect(cfg);
+    for (var i = 0; i < yTicks.length; i++) {
+      var v = yTicks[i];
+      var y = yScale(cfg, v);
+      var line = el("line");
+      line.setAttribute("class", "grid-line");
+      line.setAttribute("x1", r.x); line.setAttribute("x2", r.x + r.w);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      grid.appendChild(line);
+
+      var label = el("text");
+      label.setAttribute("class", "axis-label");
+      label.setAttribute("x", r.x - 8);
+      label.setAttribute("y", y + 3.5);
+      label.setAttribute("text-anchor", "end");
+      label.textContent = String(v);
+      axis.appendChild(label);
+    }
+  }
+
+  function renderXAxis(groupId, cfg) {
+    var group = document.getElementById(groupId);
+    group.textContent = "";
+    var r = plotRect(cfg);
+    var ticks = timeTicks();
+    for (var i = 0; i < ticks.length; i++) {
+      var t = ticks[i];
+      var x = xScale(cfg, t);
+      if (x < r.x - 1 || x > r.x + r.w + 1) continue;
+      var tick = el("line");
+      tick.setAttribute("class", "axis-tick");
+      tick.setAttribute("x1", x); tick.setAttribute("x2", x);
+      tick.setAttribute("y1", r.y + r.h); tick.setAttribute("y2", r.y + r.h + 5);
+      group.appendChild(tick);
+
+      var label = el("text");
+      label.setAttribute("class", "axis-label");
+      label.setAttribute("x", x);
+      label.setAttribute("y", r.y + r.h + 19);
+      label.setAttribute("text-anchor", "middle");
+      label.textContent = fmtTime(t);
+      group.appendChild(label);
+    }
+  }
+
+  var bandAx = document.getElementById("band-ax"), lineAx = document.getElementById("line-ax");
+  var bandAy = document.getElementById("band-ay"), lineAy = document.getElementById("line-ay");
+  var bandAz = document.getElementById("band-az"), lineAz = document.getElementById("line-az");
+  var bandShred = document.getElementById("band-shred");
+  var lineShredMax = document.getElementById("line-shred-max");
+  var lineShredMean = document.getElementById("line-shred-mean");
+  var ceilingLine = document.getElementById("ceiling-line");
+  var ceilingLabel = document.getElementById("ceiling-label");
+  var svgAccel = document.getElementById("svg-accel");
+  var svgShred = document.getElementById("svg-shred");
+  var crosshairAccel = document.getElementById("crosshair-accel");
+  var crosshairShred = document.getElementById("crosshair-shred");
+  var resetBtn = document.getElementById("reset-zoom");
+  var zoomOverlay = document.getElementById("zoom-overlay");
+  var zoomSelection = document.getElementById("zoom-selection");
+
+  function renderAll() {
+    var view = [];
+    for (var i = 0; i < buckets.length; i++) {
+      var b = buckets[i];
+      if (b.t >= domain[0] && b.t <= domain[1]) view.push(b);
+    }
+    if (view.length < 2) view = buckets;
+    currentView = view;
+
+    bandAx.setAttribute("d", pathBand(ACCEL, "axMin", "axMax", view));
+    lineAx.setAttribute("d", pathLine(ACCEL, "axMean", view));
+    bandAy.setAttribute("d", pathBand(ACCEL, "ayMin", "ayMax", view));
+    lineAy.setAttribute("d", pathLine(ACCEL, "ayMean", view));
+    bandAz.setAttribute("d", pathBand(ACCEL, "azMin", "azMax", view));
+    lineAz.setAttribute("d", pathLine(ACCEL, "azMean", view));
+    renderGrid("grid-accel", "yaxis-accel", ACCEL, [-40, -20, 0, 20, 40]);
+    renderXAxis("xaxis-accel", ACCEL);
+    applySeriesVisibility();
+
+    bandShred.setAttribute("d", pathBand(SHRED, "shredMin", "shredMax", view));
+    lineShredMax.setAttribute("d", pathLine(SHRED, "shredMax", view));
+    lineShredMean.setAttribute("d", pathLine(SHRED, "shredMean", view));
+
+    var rShred = plotRect(SHRED);
+    if (meta.accelRangeG <= SHRED.yDomain[1]) {
+      var yCeil = yScale(SHRED, meta.accelRangeG);
+      ceilingLine.setAttribute("x1", rShred.x); ceilingLine.setAttribute("x2", rShred.x + rShred.w);
+      ceilingLine.setAttribute("y1", yCeil); ceilingLine.setAttribute("y2", yCeil);
+      ceilingLine.style.display = "";
+      ceilingLabel.setAttribute("x", rShred.x + rShred.w - 4);
+      ceilingLabel.setAttribute("y", yCeil - 5);
+      ceilingLabel.textContent = "±" + meta.accelRangeG + "G sensor ceiling";
+      ceilingLabel.style.display = "";
+    } else {
+      ceilingLine.style.display = "none";
+      ceilingLabel.style.display = "none";
+    }
+
+    var shredTicks = [];
+    for (var s = 0; s <= SHRED.yDomain[1] + 1e-6; s += SHRED.yDomain[1] / 4) shredTicks.push(Math.round(s * 10) / 10);
+    renderGrid("grid-shred", "yaxis-shred", SHRED, shredTicks);
+    renderXAxis("xaxis-shred", SHRED);
+
+    zoomOverlay.setAttribute("x", rShred.x); zoomOverlay.setAttribute("y", rShred.y);
+    zoomOverlay.setAttribute("width", rShred.w); zoomOverlay.setAttribute("height", rShred.h);
+
+    resetBtn.hidden = (domain[0] === 0 && domain[1] === summary.durationS);
+  }
+
+  function applySeriesVisibility() {
+    bandAx.style.display = seriesVisible.ax ? "" : "none";
+    lineAx.style.display = seriesVisible.ax ? "" : "none";
+    bandAy.style.display = seriesVisible.ay ? "" : "none";
+    lineAy.style.display = seriesVisible.ay ? "" : "none";
+    bandAz.style.display = seriesVisible.az ? "" : "none";
+    lineAz.style.display = seriesVisible.az ? "" : "none";
+  }
+
+  var legendButtons = document.querySelectorAll("#legend-accel .legend-item");
+  for (var li = 0; li < legendButtons.length; li++) {
+    legendButtons[li].addEventListener("click", function () {
+      var key = this.getAttribute("data-series");
+      seriesVisible[key] = !seriesVisible[key];
+      this.setAttribute("aria-pressed", String(seriesVisible[key]));
+      applySeriesVisibility();
+    });
+  }
+
+  function findNearest(view, t) {
+    if (!view.length) return null;
+    var lo = 0, hi = view.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (view[mid].t < t) lo = mid + 1; else hi = mid;
+    }
+    if (lo > 0) {
+      var prev = view[lo - 1], cur = view[lo];
+      return (t - prev.t < cur.t - t) ? prev : cur;
+    }
+    return view[lo];
+  }
+
+  var tooltip = document.getElementById("tooltip");
+  var ttTime = document.getElementById("tt-time");
+  var ttAx = document.getElementById("tt-ax");
+  var ttAy = document.getElementById("tt-ay");
+  var ttAz = document.getElementById("tt-az");
+  var ttShredMax = document.getElementById("tt-shred-max");
+  var ttShredMean = document.getElementById("tt-shred-mean");
+
+  function updateCrosshairs(b) {
+    var xA = xScale(ACCEL, b.t);
+    var rA = plotRect(ACCEL);
+    crosshairAccel.setAttribute("x1", xA); crosshairAccel.setAttribute("x2", xA);
+    crosshairAccel.setAttribute("y1", rA.y); crosshairAccel.setAttribute("y2", rA.y + rA.h);
+    crosshairAccel.style.display = "block";
+
+    var xS = xScale(SHRED, b.t);
+    var rS = plotRect(SHRED);
+    crosshairShred.setAttribute("x1", xS); crosshairShred.setAttribute("x2", xS);
+    crosshairShred.setAttribute("y1", rS.y); crosshairShred.setAttribute("y2", rS.y + rS.h);
+    crosshairShred.style.display = "block";
+  }
+
+  function showTooltip(b, clientX, clientY) {
+    tooltip.hidden = false;
+    ttTime.textContent = fmtTime(b.t) + " elapsed";
+    ttAx.textContent = b.axMean.toFixed(2) + " m/s²";
+    ttAy.textContent = b.ayMean.toFixed(2) + " m/s²";
+    ttAz.textContent = b.azMean.toFixed(2) + " m/s²";
+    ttShredMax.textContent = b.shredMax.toFixed(2) + " g";
+    ttShredMean.textContent = b.shredMean.toFixed(2) + " g";
+
+    var pad = 16;
+    var left = clientX + pad, top = clientY + pad;
+    var tw = tooltip.offsetWidth || 190, th = tooltip.offsetHeight || 150;
+    if (left + tw > window.innerWidth - 8) left = clientX - tw - pad;
+    if (top + th > window.innerHeight - 8) top = clientY - th - pad;
+    tooltip.style.left = Math.max(8, left) + "px";
+    tooltip.style.top = Math.max(8, top) + "px";
+  }
+
+  function hideOverlay() {
+    crosshairAccel.style.display = "none";
+    crosshairShred.style.display = "none";
+    tooltip.hidden = true;
+  }
+
+  function pointerHandler(evt, svgEl, cfg) {
+    var rect = svgEl.getBoundingClientRect();
+    var scaleX = cfg.vb.w / rect.width;
+    var localX = (evt.clientX - rect.left) * scaleX;
+    var t = xInvert(cfg, localX);
+    var b = findNearest(currentView, t);
+    if (!b) return;
+    updateCrosshairs(b);
+    showTooltip(b, evt.clientX, evt.clientY);
+  }
+
+  svgAccel.addEventListener("pointermove", function (e) { pointerHandler(e, svgAccel, ACCEL); });
+  svgAccel.addEventListener("pointerleave", hideOverlay);
+
+  var dragging = false, dragStartX = 0;
+
+  zoomOverlay.addEventListener("pointerdown", function (e) {
+    dragging = true;
+    try { zoomOverlay.setPointerCapture(e.pointerId); } catch (err) {}
+    var rect = svgShred.getBoundingClientRect();
+    var scaleX = SHRED.vb.w / rect.width;
+    dragStartX = (e.clientX - rect.left) * scaleX;
+    var r = plotRect(SHRED);
+    zoomSelection.setAttribute("x", dragStartX);
+    zoomSelection.setAttribute("y", r.y);
+    zoomSelection.setAttribute("width", 0);
+    zoomSelection.setAttribute("height", r.h);
+    zoomSelection.style.display = "block";
+  });
+
+  zoomOverlay.addEventListener("pointermove", function (e) {
+    pointerHandler(e, svgShred, SHRED);
+    if (!dragging) return;
+    var rect = svgShred.getBoundingClientRect();
+    var scaleX = SHRED.vb.w / rect.width;
+    var r = plotRect(SHRED);
+    var curX = (e.clientX - rect.left) * scaleX;
+    curX = Math.max(r.x, Math.min(r.x + r.w, curX));
+    var x0 = Math.min(dragStartX, curX), x1 = Math.max(dragStartX, curX);
+    zoomSelection.setAttribute("x", x0);
+    zoomSelection.setAttribute("width", x1 - x0);
+  });
+
+  zoomOverlay.addEventListener("pointerup", function (e) {
+    if (!dragging) return;
+    dragging = false;
+    zoomSelection.style.display = "none";
+    var rect = svgShred.getBoundingClientRect();
+    var scaleX = SHRED.vb.w / rect.width;
+    var r = plotRect(SHRED);
+    var endX = (e.clientX - rect.left) * scaleX;
+    endX = Math.max(r.x, Math.min(r.x + r.w, endX));
+    var x0 = Math.min(dragStartX, endX), x1 = Math.max(dragStartX, endX);
+    if (Math.abs(x1 - x0) < 6) return;
+    var t0 = xInvert(SHRED, x0), t1 = xInvert(SHRED, x1);
+    var bucketSpan = summary.durationS / Math.max(1, buckets.length);
+    var minSpan = Math.max(bucketSpan * 30, 0.001);
+    if (t1 - t0 < minSpan) return;
+    domain = [Math.max(0, t0), Math.min(summary.durationS, t1)];
+    renderAll();
+  });
+
+  zoomOverlay.addEventListener("pointerleave", function () {
+    if (!dragging) hideOverlay();
+  });
+
+  resetBtn.addEventListener("click", function () {
+    domain = [0, summary.durationS];
+    renderAll();
+  });
+
+  var tableBuilt = false;
+  var toggleTableBtn = document.getElementById("toggle-table");
+  var tableWrap = document.getElementById("table-wrap");
+
+  function buildTable() {
+    var tbody = document.querySelector("#data-table tbody");
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < tableRows.length; i++) {
+      var row = tableRows[i];
+      var tr = document.createElement("tr");
+      var cells = [
+        fmtMinuteLabel(row.minute),
+        String(row.n),
+        row.accelMeanMag.toFixed(2),
+        row.shredMean.toFixed(2),
+        row.shredMax.toFixed(2)
+      ];
+      for (var c = 0; c < cells.length; c++) {
+        var td = document.createElement("td");
+        td.textContent = cells[c];
+        tr.appendChild(td);
+      }
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+  }
+
+  toggleTableBtn.addEventListener("click", function () {
+    var expanded = toggleTableBtn.getAttribute("aria-expanded") === "true";
+    toggleTableBtn.setAttribute("aria-expanded", String(!expanded));
+    tableWrap.hidden = expanded;
+    toggleTableBtn.textContent = expanded ? "Show data table" : "Hide data table";
+    if (!expanded && !tableBuilt) {
+      buildTable();
+      tableBuilt = true;
+    }
+  });
+
+  function buildMotif() {
+    var path = document.getElementById("motif-path");
+    var n = buckets.length;
+    var step = Math.max(1, Math.floor(n / 220));
+    var pts = [];
+    for (var i = 0; i < n; i += step) pts.push(buckets[i]);
+    if (!pts.length) return;
+    var maxV = 0;
+    for (var j = 0; j < pts.length; j++) if (pts[j].shredMean > maxV) maxV = pts[j].shredMean;
+    maxV = maxV || 1;
+    var w = 1000, h = 84, pad = 6;
+    var d = "";
+    for (var k = 0; k < pts.length; k++) {
+      var x = (pts[k].t / Math.max(summary.durationS, 0.001)) * w;
+      var y = (h - pad) - (pts[k].shredMean / maxV) * (h - pad * 2);
+      d += (k === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+    }
+    path.setAttribute("d", d);
+  }
+
+  populateMeta();
+  buildMotif();
+  renderAll();
+})();
+</script>
