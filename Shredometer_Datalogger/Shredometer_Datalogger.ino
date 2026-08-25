@@ -73,10 +73,10 @@ void setupSensor()
 void writeDataToFile(String dataString) {
   // write to the already-open file. dataString already ends in "\n",
   // so use print(), not println(), to avoid a doubled line ending.
+  // No per-sample serial echo: nothing reads it live at this sample
+  // rate, and it only costs loop time.
   if (dataFile) {
     dataFile.print(dataString);
-    // print to the serial port too:
-    Serial.print(dataString);
   }
   // if the file isn't open, pop up an error:
   else {
