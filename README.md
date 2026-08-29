@@ -149,12 +149,11 @@ It can also produce output in two formats:
 .venv/bin/python scripts/analyze_log.py path/to/DL_0.TXT -H report.html
 ```
 
-Pass `--accel-range` to match the sketch's `setupAccel()` setting — it
-controls the report's clipping detection and the reference line on the
-shred-score chart. **The script's default is still `4`, but the firmware is
-now on `LSM9DS1_ACCELRANGE_16G`, so pass `--accel-range 16` for any log
-captured since that change** (this mismatch hasn't been fixed in the script
-yet).
+Pass `--accel-range` if it differs from the sketch's `setupAccel()` setting
+— it controls the report's clipping detection and the reference line on the
+shred-score chart. The default is `16`, matching the current firmware's
+`LSM9DS1_ACCELRANGE_16G`. Use `--accel-range 4` for any log captured before
+that change.
 
 ## Questions to ask and answer
 

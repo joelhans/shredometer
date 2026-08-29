@@ -159,10 +159,10 @@ def main():
     parser.add_argument("--show", action="store_true", help="Show the PNG plot in a window")
     parser.add_argument("-H", "--html", help="Write an interactive HTML report to this file")
     parser.add_argument(
-        "--accel-range", type=float, default=4.0, dest="accel_range",
+        "--accel-range", type=float, default=16.0, dest="accel_range",
         help="Accelerometer full-scale range in g. Used for clip detection and the "
-             "HTML report's reference line. Default 4, matching the sketch's "
-             "LSM9DS1_ACCELRANGE_4G setting.",
+             "HTML report's reference line. Default 16, matching the sketch's "
+             "LSM9DS1_ACCELRANGE_16G setting.",
     )
     args = parser.parse_args()
 
