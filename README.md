@@ -155,3 +155,22 @@ shred-score chart. **The script's default is still `4`, but the firmware is
 now on `LSM9DS1_ACCELRANGE_16G`, so pass `--accel-range 16` for any log
 captured since that change** (this mismatch hasn't been fixed in the script
 yet).
+
+## Questions to ask and answer
+
+- What's the "correct" celing to set?
+- Does not having the Shredometer _firmly_ mounted to the bike have an impact on
+  the data? If it's on there really firmly, do we get "cleaner" data?
+- Does the starting angle of the Shredometer have any impact on the data? Right
+  now it's sitting at an angle because it's attached to the downtube like a
+  water bottle might be.
+- Does the positioning of the accelerometer on the bike have an impact on the
+  data? What if I put it on the rear triangle, which has all the suspension
+  motion?
+- Do we need any kind of calibration? At the start of a session? Based on
+  anything the rider is doing?
+
+## To build
+
+- A snap-in cage that mounts to standard water bottle mounts.
+- A handlebar mount for the screen.
