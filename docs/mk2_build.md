@@ -107,6 +107,15 @@ samples including one all-zero triple. The wild samples are the jumpers,
 not the sensor. Next: solder the seven wires, rerun, expect zero outliers.
 The logger firmware must drop all-zero samples as a guard regardless.
 
+**2026-09-12, ADXL375 soldered.** Seven wires on the underside. Report:
+ID 0xE5, mean vector 0.67 g (x +0.60, y -0.02, z +0.29: zero-g offset,
+needs a six-position trim later), rms 0.18 to 0.22 g per axis, minimum
+0.10 g, maximum 1.83 g, no all-zero samples. The jumper glitches are gone.
+Live resting peak through the library path is about 2.5 g: that is the
+noise floor of 6300 raw samples a second at 3200 Hz bandwidth, and the
+logger must not report raw single-sample peaks. Lower the bandwidth or
+average a few samples, or both.
+
 ## Order of work
 
 Do the steps in this order. Run the bring-up sketch after each step and

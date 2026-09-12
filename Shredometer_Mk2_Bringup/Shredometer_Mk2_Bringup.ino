@@ -128,25 +128,32 @@ static void adxlStats() {
            adxlReg(0x2C), adxlReg(0x31), adxlReg(0x2D));
   Serial.println(buf);
   const int N = 3000;
-  double sx = 0, sy = 0, sz = 0, sxx = 0, syy = 0, szz = 0;
-  int outliers = 0; float magMax = 0, magMin = 1e9;
-  int16_t x, y, z;
+  static int16_t xs[N], ys[N], zs[N];
+  double sx = 0, sy = 0, sz = 0;
+  int zeros = 0;
   for (int i = 0; i < N; i++) {
-    adxlBurst(&x, &y, &z);
-    sx += x; sy += y; sz += z; sxx += (double)x * x; syy += (double)y * y; szz += (double)z * z;
-    float m = sqrtf((float)x * x + (float)y * y + (float)z * z) * 0.049f;
-    if (m > magMax) magMax = m;
-    if (m < magMin) magMin = m;
-    if (m > 2.0f || m < 0.3f) outliers++;
+    adxlBurst(&xs[i], &ys[i], &zs[i]);
+    sx += xs[i]; sy += ys[i]; sz += zs[i];
+    if (xs[i] == 0 && ys[i] == 0 && zs[i] == 0) zeros++;
     delayMicroseconds(320);   // about one 3200 Hz sample period
   }
   float mx = sx / N, my = sy / N, mz = sz / N;
-  float rx = sqrtf(sxx / N - mx * mx), ry = sqrtf(syy / N - my * my), rz = sqrtf(szz / N - mz * mz);
-  snprintf(buf, sizeof buf, "      mean  x %+.2f  y %+.2f  z %+.2f g   |mean| %.2f g",
+  // Scatter about the mean, and glitches: samples further than 1.5 g
+  // from the mean vector. Noise at 0.2 g rms per axis essentially never
+  // gets there, so any count here is the wiring.
+  double sxx = 0, syy = 0, szz = 0; int far = 0; float devMax = 0;
+  for (int i = 0; i < N; i++) {
+    float dx = xs[i] - mx, dy = ys[i] - my, dz = zs[i] - mz;
+    sxx += dx * dx; syy += dy * dy; szz += dz * dz;
+    float d = sqrtf(dx * dx + dy * dy + dz * dz) * 0.049f;
+    if (d > devMax) devMax = d;
+    if (d > 1.5f) far++;
+  }
+  snprintf(buf, sizeof buf, "      mean  x %+.2f  y %+.2f  z %+.2f g   |mean| %.2f g (offsets make this differ from 1.0)",
            mx * 0.049f, my * 0.049f, mz * 0.049f, sqrtf(mx * mx + my * my + mz * mz) * 0.049f);
   Serial.println(buf);
-  snprintf(buf, sizeof buf, "      rms   x %.2f  y %.2f  z %.2f g   |a| min %.2f max %.2f   outliers %d of %d",
-           rx * 0.049f, ry * 0.049f, rz * 0.049f, magMin, magMax, outliers, N);
+  snprintf(buf, sizeof buf, "      rms   x %.2f  y %.2f  z %.2f g   worst deviation %.2f g   glitches %d, all-zero %d, of %d",
+           sqrtf(sxx / N) * 0.049f, sqrtf(syy / N) * 0.049f, sqrtf(szz / N) * 0.049f, devMax, far, zeros, N);
   Serial.println(buf);
 }
 

@@ -217,6 +217,13 @@ assembly. Not worth it until the Phase 3 board works.
 - **Open:** whether the bar end ever gets its own PCB or stays a hand-wired
   XIAO in a printed box. Live with it before deciding.
 - **Open:** the Phase 2 protoboard layout. This gates the Phase 4 case.
+- **Open:** peak detection on the ADXL375. At 49 mg per count and 3200 Hz
+  bandwidth the resting noise is about 0.2 g rms per axis, so the largest
+  of 6300 raw samples a second sits near 2.5 g. The logger cannot report
+  raw single-sample peaks. Choose between a lower output data rate (each
+  halving cuts noise by about 1.4), a short moving average, or both, and
+  verify with a tap test. Also trim the zero-g offset (six-position)
+  before trusting anything below a few g.
 
 ## Next
 
