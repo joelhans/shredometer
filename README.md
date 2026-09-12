@@ -345,9 +345,20 @@ runs unchanged on both old and new logs. Switching the shred score over to
 `Peak |a|` is a small change, but it would make new reports incomparable with
 the existing ones, so it should wait until there is a log to test it against.
 
+## Mk2
+
+The next version replaces the Nano Every and the LSM9DS1 with a XIAO
+nRF52840 Sense and an ADXL375 (±200 g, SPI), logs binary at 1 kHz, and puts
+the electronics in a printed case that bolts straight to the bottle bosses.
+The staged plan, bill of materials, vendor list, and open decisions are in
+[docs/mk2.md](docs/mk2.md). Parts are ordered as of 2026-09-07.
+
 ## To build
 
-- A snap-in cage that mounts to standard water bottle mounts.
+- A snap-in cage that mounts to standard water bottle mounts. The current
+  attempt is `hardware/bottle_cage_mount.scad` (v2 cradle, unproven on a
+  print). Mk2 replaces it with a case that is its own mount; see
+  [docs/mk2.md](docs/mk2.md).
 - A handlebar mount for the screen.
 
 ## To do

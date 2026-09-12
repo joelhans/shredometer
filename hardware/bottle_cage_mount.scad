@@ -1,6 +1,13 @@
 // ============================================================
 // Shredometer bottle-cage mount + cradle
 // ============================================================
+// STATUS (2026-09-07): this is the Mk1 cradle, for the bought
+// 99 x 55 x 43 mm enclosure. Mk2 replaces the cradle with a printed
+// case that is its own bottle mount; see docs/mk2.md. What carries
+// over from here: the M5 bolt interface (spine section), the captive
+// M3 nut scheme (lid section), and the print-orientation and
+// volume-intersection checks described below.
+//
 // Four printed parts:
 //
 //   spine         -- baseplate, bolts to the frame's 2-bolt water-
