@@ -16,8 +16,21 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "report
 
 
 def load_log(path):
-    df = pd.read_csv(path, skipinitialspace=True)
+    # Logs come straight off an SD card and occasionally carry a row damaged by a
+    # bad write (a run of 0xFF, i.e. erased flash, in the middle of a line). Drop
+    # those rather than dying on them; the header names the columns we require.
+    df = pd.read_csv(
+        path, skipinitialspace=True, encoding="utf-8", encoding_errors="replace",
+        on_bad_lines="skip", low_memory=False,
+    )
     df.columns = df.columns.str.strip()
+
+    numeric = df.apply(pd.to_numeric, errors="coerce")
+    damaged = int(numeric.isna().any(axis=1).sum())
+    if damaged:
+        print(f"Skipped {damaged} damaged row(s) in {os.path.basename(path)}")
+        numeric = numeric.dropna()
+    df = numeric.reset_index(drop=True)
     df["Time (s)"] = df["Time Elapsed (ms)"] / 1000.0
     df["Shred Score"] = (
         df["Accel X (m/s^2)"] ** 2
@@ -159,10 +172,11 @@ def main():
     parser.add_argument("--show", action="store_true", help="Show the PNG plot in a window")
     parser.add_argument("-H", "--html", help="Write an interactive HTML report to this file")
     parser.add_argument(
-        "--accel-range", type=float, default=16.0, dest="accel_range",
-        help="Accelerometer full-scale range in g. Used for clip detection and the "
-             "HTML report's reference line. Default 16, matching the sketch's "
-             "LSM9DS1_ACCELRANGE_16G setting.",
+        "--accel-range", type=float, default=24.0, dest="accel_range",
+        help="Accelerometer saturation point in g. Used for clip detection and the "
+             "HTML report's reference line. Default 24, which is where the sketch's "
+             "LSM9DS1_ACCELRANGE_16G setting actually rails: that mode's sensitivity "
+             "is 0.732 mg/LSB, and 32767 counts of it is 24g, not 16g.",
     )
     args = parser.parse_args()
 

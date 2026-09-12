@@ -571,6 +571,8 @@
   var summary = DATA.summary;
   var tableRows = DATA.table;
   var meta = DATA.meta;
+  var railG = String(+(meta.accelRangeG.toFixed(2)));       // per-axis saturation, in g
+  var magCeilG = String(+((meta.accelRangeG * Math.sqrt(3)).toFixed(1)));  // ceiling on the 3-axis magnitude
 
   var shredDomainMax = Math.max(2, Math.ceil((summary.maxShred * 1.15) / 2) * 2);
 
@@ -642,24 +644,27 @@
     var flagLabel = document.getElementById("kpi-flag-label");
     var flagValue = document.getElementById("kpi-flag-value");
     var flagSub = document.getElementById("kpi-flag-sub");
-    flagValue.textContent = "±" + meta.accelRangeG + "G";
+    flagValue.textContent = railG + "G";
     if (meta.clipped) {
       flagTile.className = "kpi kpi-flag-critical";
-      flagLabel.textContent = "Sensor ceiling";
+      flagLabel.textContent = "Per-axis rail";
       flagSub.textContent = "hard hits are clipping — see note below";
     } else {
       flagTile.className = "kpi kpi-flag-good";
-      flagLabel.textContent = "Sensor range";
+      flagLabel.textContent = "Per-axis rail";
       flagSub.textContent = "peaks stayed under the ceiling";
     }
 
     var clipNote = document.getElementById("foot-clip-note");
     if (meta.clipped) {
       clipNote.hidden = false;
-      clipNote.textContent = "The accelerometer is configured for a ±" + meta.accelRangeG +
-        "G range. Every burst that touches the ceiling above is clipped at the sensor itself — " +
-        "the true peaks during hard hits were likely higher than " + summary.maxShred.toFixed(2) +
-        "g. A wider range setting would trade resolution for headroom.";
+      clipNote.textContent = "Each axis saturates at " + railG + "g. (The sketch selects " +
+        "LSM9DS1_ACCELRANGE_16G, but that mode's 0.732 mg/LSB sensitivity puts full scale — " +
+        "32767 counts — at " + railG + "g, not 16g.) Samples where an axis sat exactly on that " +
+        "rail were truncated, so their shred score is a lower bound, not a measurement. The " +
+        "reported peak of " + summary.maxShred.toFixed(2) + "g is one of them; the true value " +
+        "is higher by an unknown amount. Note that the shred score is a 3-axis magnitude, so it " +
+        "can legitimately reach " + magCeilG + "g (√3 × " + railG + ") without any axis railing.";
     } else {
       clipNote.hidden = true;
     }
@@ -829,7 +834,7 @@
       ceilingLine.style.display = "";
       ceilingLabel.setAttribute("x", rShred.x + rShred.w - 4);
       ceilingLabel.setAttribute("y", yCeil - 5);
-      ceilingLabel.textContent = "±" + meta.accelRangeG + "G sensor ceiling";
+      ceilingLabel.textContent = railG + "G per-axis rail (magnitude may exceed)";
       ceilingLabel.style.display = "";
     } else {
       ceilingLine.style.display = "none";
