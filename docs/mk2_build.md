@@ -5,7 +5,7 @@ Bench build of the Phase 2 logger on the 5 x 7 cm protoboard. See
 the parts arrived together on 2026-09-12, so the ADXL375 goes straight onto
 the XIAO.
 
-Parts on hand: XIAO nRF52840 Sense, ADXL375 breakout (Adafruit 5374),
+Parts on hand: XIAO nRF52840 Sense Plus, ADXL375 breakout (Adafruit 5374),
 microSD breakout+ (Adafruit 254), LiPo with JST, slide switch, tactile
 button, 2.2k resistors, the existing HT16K33 bar display. Not bought: the
 5 V boost and the BSS138 level shifter.
@@ -80,6 +80,33 @@ and run the 28 AWG silicone wire on the underside. Solder each end of a
 wire before cutting the next one, and check each net with the multimeter's
 continuity beeper before applying power.
 
+## Bench log
+
+**2026-09-12.** XIAO (a Sense Plus) soldered to the perfboard, nothing else
+wired. Bring-up sketch flashed and reporting. Results with nothing wired:
+ADXL375 fail, microSD fail, display no ACK, button released, battery about
+3.7 V with no cell (the charger's open output). All as expected.
+
+**The onboard IMU does not answer.** Its internal I2C bus (P0.07 SDA,
+P0.27 SCL) reads low on both lines with the MCU's own pull-up, whether the
+IMU supply pin (P1.08) is low or high, and a 9-clock bus unstick does not
+change it. Those two lines are internal to the XIAO module and reach no
+header pin or back pad, so the perfboard cannot be the cause. Either the
+IMU on this unit is faulty or the Seeed board package has a Sense Plus bug
+(a forum thread reports the same symptom on Seeed's other package). Not
+resolved. Decision: proceed without the gyro. The shred score does not use
+it. If it matters later, the clean test is Seeed's mbed package at 2.9.2
+with Seeed's own IMU example.
+
+**2026-09-12, later.** ADXL375 on female-female jumpers to the XIAO
+headers. It answers: ID 0xE5, BW_RATE 0x0F (3200 Hz), DATA_FORMAT 0x0B,
+POWER_CTL 0x08. Library path: 138 us per sample, about 6300 reads/s. Burst
+path, 3000 samples at rest: mean vector 0.86 g (zero-g offset, per
+datasheet), rms 0.16 to 0.19 g per axis (normal noise at 3200 Hz), 7 wild
+samples including one all-zero triple. The wild samples are the jumpers,
+not the sensor. Next: solder the seven wires, rerun, expect zero outliers.
+The logger firmware must drop all-zero samples as a guard regardless.
+
 ## Order of work
 
 Do the steps in this order. Run the bring-up sketch after each step and
@@ -129,27 +156,62 @@ Two library traps, both hit on 2026-09-12:
 - **Do not install the SdFat library.** The core bundles SdFat 2.2.1, and
   the current library-manager release (2.3.0) fails to compile against this
   core's Print class. If `arduino-cli lib list` shows SdFat, uninstall it.
-- **The Seeed LSM6DS3 library talks to the wrong bus on this core.** The
-  Sense's IMU is on an internal second I2C bus (Wire1) and the library only
-  switches to it under the mbed core. The bring-up sketch reads WHO_AM_I on
-  Wire1 directly. The logger firmware will need the same treatment, or the
-  build flag `-DTARGET_SEEED_XIAO_NRF52840_SENSE`.
+- **The Seeed LSM6DS3 library needs the right board target.** The
+  Sense's IMU is on an internal second I2C bus (Wire1), and the library
+  switches to Wire1 only when the variant defines
+  `TARGET_SEEED_XIAO_NRF52840_SENSE` or the `_PLUS` form. This core does
+  define them, so the library works with the matching FQBN. The bring-up
+  sketch still reads WHO_AM_I on Wire1 directly, so a failure points at
+  the board rather than at a library.
+- **Never do an address-only I2C probe on this core.** The nRF52 Wire
+  driver has no timeouts, and `endTransmission()` with zero data bytes
+  waits forever for a start event that never comes. Always write at least
+  one byte before `endTransmission()`. An I2C scanner sketch written for
+  AVR hangs here for this reason.
+
+**Which board.** The unit on the bench identifies its bootloader over USB
+as "XIAO nRF52840 Sense Plus" (vendor 2886, product 0065). The plain Sense
+bootloader is product 0045. Check with `lsusb -d 2886:` while the board is
+in the bootloader. Build for the board you have. D0 to D10 are the same on
+both, but the battery, charger, and IMU pin macros differ.
 
 ```
-arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840Sense Shredometer_Mk2_Bringup
-arduino-cli upload -p /dev/ttyACM0 --fqbn Seeeduino:nrf52:xiaonRF52840Sense Shredometer_Mk2_Bringup
+scripts/flash_xiao.sh Shredometer_Mk2_Bringup
 ```
 
-If the upload cannot find the board, double-tap the reset button on the
-XIAO. The board enters its bootloader and shows up as a USB drive named
-XIAO-SENSE. Upload again.
+The script compiles, then flashes the right way for the board's state. If
+the board is running an app, it uses `arduino-cli upload`. If the board is
+already in its bootloader, it calls `adafruit-nrfutil` directly, because
+arduino-cli's 1200-baud port touch breaks a bootloader that is already
+waiting and the upload fails with "No data received on serial port".
+Set `FQBN=Seeeduino:nrf52:xiaonRF52840Sense` in the environment for a
+plain Sense.
 
-Serial monitor: the XIAO is USB CDC, so any terminal works, unlike the
-Nano Every.
+The bring-up sketch runs its tests when a host opens the port, not at
+boot, so the report is never missed. Send `r` in the monitor to run the
+tests again after wiring the next subsystem. No reflash needed.
+
+**Serial monitor.** The XIAO is USB CDC, so any terminal works, unlike the
+Nano Every. Start the monitor only after the upload has finished and the
+board has come back.
 
 ```
+arduino-cli board list
 arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200
 ```
+
+The board disconnects and re-enumerates on every upload and every reset.
+A monitor that was open across that event keeps a dead handle and shows
+nothing forever, and the board can come back as `/dev/ttyACM1` while the
+dead handle holds `/dev/ttyACM0`. If the monitor sits at "Connecting",
+press Ctrl-C, run `arduino-cli board list` to find the current port, and
+start the monitor again. Never leave a monitor open during an upload: it
+can also wedge the bootloader's DFU session, which then needs a USB
+unplug and replug to recover.
+
+If the upload cannot find the board, double-tap the reset button on the
+XIAO. The board enters its bootloader and shows up as a USB drive. Upload
+again.
 
 ## What the bring-up report should look like
 

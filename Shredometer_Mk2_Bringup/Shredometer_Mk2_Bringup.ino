@@ -5,10 +5,13 @@
 // flash this, read the report, wire the next. Nothing here logs a
 // ride; that is Shredometer_Mk2 (to come).
 //
-// Board:  Seeed XIAO nRF52840 Sense
-// FQBN:   Seeeduino:nrf52:xiaonRF52840Sense
-// Build:  arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840Sense Shredometer_Mk2_Bringup
-// Upload: arduino-cli upload -p /dev/ttyACM0 --fqbn Seeeduino:nrf52:xiaonRF52840Sense Shredometer_Mk2_Bringup
+// Board:  Seeed XIAO nRF52840 Sense Plus (bootloader reports USB PID 0x0065)
+// FQBN:   Seeeduino:nrf52:xiaonRF52840SensePlus
+//         (plain Sense: Seeeduino:nrf52:xiaonRF52840Sense, bootloader PID 0x0045)
+// Build:  arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840SensePlus Shredometer_Mk2_Bringup
+// Upload: arduino-cli upload -p /dev/ttyACM0 --fqbn Seeeduino:nrf52:xiaonRF52840SensePlus Shredometer_Mk2_Bringup
+// D0 to D10 are the same on both boards. The battery, charger, and IMU
+// pins come from the variant's macros, so the FQBN must match the board.
 //
 // See docs/mk2_build.md for the wiring table these pins come from.
 
@@ -47,7 +50,20 @@ static void report(const char *name, bool ok, const char *detail = "") {
 static void testAdxl() {
   char buf[96];
   if (!adxl.begin()) {
-    report("ADXL375", false, "begin() failed. Check CS, SCK, MOSI, MISO, VIN, GND.");
+    // Say what came back, so a wiring fault can be located.
+    //   0x00 every time: MISO stuck low, or the sensor never selected (CS, or no power).
+    //   0xFF every time: MISO floating or open (SDO wire), or no power to the sensor.
+    //   other, varying:  clock or data wire swapped or open.
+    uint8_t ids[4];
+    for (int i = 0; i < 4; i++) ids[i] = adxl.getDeviceID();
+    pinMode(PIN_SPI_MISO, INPUT_PULLDOWN); delayMicroseconds(200); bool misoDown = digitalRead(PIN_SPI_MISO);
+    pinMode(PIN_SPI_MISO, INPUT_PULLUP);   delayMicroseconds(200); bool misoUp   = digitalRead(PIN_SPI_MISO);
+    SPI.begin();  // give the pin back to SPI
+    snprintf(buf, sizeof buf, "no ID 0xE5. Read %02X %02X %02X %02X. MISO idle: %s",
+             ids[0], ids[1], ids[2], ids[3],
+             (misoDown != misoUp) ? "floating (SDO wire open, or sensor unpowered)"
+                                  : (misoUp ? "driven high" : "driven low"));
+    report("ADXL375", false, buf);
     return;
   }
   uint8_t id = adxl.getDeviceID();
@@ -74,6 +90,64 @@ static void testAdxl() {
   if (mag < 0.7f || mag > 1.3f) {
     Serial.println("      WARN: |a| at rest is not near 1 g. Hold the board still and rerun.");
   }
+  adxlStats();
+}
+
+// Read a register directly, outside the library.
+static uint8_t adxlReg(uint8_t reg) {
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(PIN_ADXL_CS, LOW);
+  SPI.transfer(reg | 0x80);
+  uint8_t v = SPI.transfer(0);
+  digitalWrite(PIN_ADXL_CS, HIGH);
+  SPI.endTransaction();
+  return v;
+}
+
+// One 6-byte burst read of X, Y, Z. This is how the logger will read.
+static void adxlBurst(int16_t *x, int16_t *y, int16_t *z) {
+  uint8_t b[6];
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(PIN_ADXL_CS, LOW);
+  SPI.transfer(0x32 | 0x80 | 0x40);   // DATAX0, read, multi-byte
+  for (int i = 0; i < 6; i++) b[i] = SPI.transfer(0);
+  digitalWrite(PIN_ADXL_CS, HIGH);
+  SPI.endTransaction();
+  *x = (int16_t)(b[0] | (b[1] << 8));
+  *y = (int16_t)(b[2] | (b[3] << 8));
+  *z = (int16_t)(b[4] | (b[5] << 8));
+}
+
+// 3000 burst samples at rest: mean vector, scatter per axis, outliers.
+// Clean data is a mean magnitude near 1 g, rms of a few counts (0.1 to
+// 0.3 g), and zero outliers. Outliers with an otherwise clean mean point
+// at the wiring, not the sensor.
+static void adxlStats() {
+  char buf[120];
+  snprintf(buf, sizeof buf, "      regs: BW_RATE 0x%02X (0x0F = 3200 Hz), DATA_FORMAT 0x%02X, POWER_CTL 0x%02X",
+           adxlReg(0x2C), adxlReg(0x31), adxlReg(0x2D));
+  Serial.println(buf);
+  const int N = 3000;
+  double sx = 0, sy = 0, sz = 0, sxx = 0, syy = 0, szz = 0;
+  int outliers = 0; float magMax = 0, magMin = 1e9;
+  int16_t x, y, z;
+  for (int i = 0; i < N; i++) {
+    adxlBurst(&x, &y, &z);
+    sx += x; sy += y; sz += z; sxx += (double)x * x; syy += (double)y * y; szz += (double)z * z;
+    float m = sqrtf((float)x * x + (float)y * y + (float)z * z) * 0.049f;
+    if (m > magMax) magMax = m;
+    if (m < magMin) magMin = m;
+    if (m > 2.0f || m < 0.3f) outliers++;
+    delayMicroseconds(320);   // about one 3200 Hz sample period
+  }
+  float mx = sx / N, my = sy / N, mz = sz / N;
+  float rx = sqrtf(sxx / N - mx * mx), ry = sqrtf(syy / N - my * my), rz = sqrtf(szz / N - mz * mz);
+  snprintf(buf, sizeof buf, "      mean  x %+.2f  y %+.2f  z %+.2f g   |mean| %.2f g",
+           mx * 0.049f, my * 0.049f, mz * 0.049f, sqrtf(mx * mx + my * my + mz * mz) * 0.049f);
+  Serial.println(buf);
+  snprintf(buf, sizeof buf, "      rms   x %.2f  y %.2f  z %.2f g   |a| min %.2f max %.2f   outliers %d of %d",
+           rx * 0.049f, ry * 0.049f, rz * 0.049f, magMin, magMax, outliers, N);
+  Serial.println(buf);
 }
 
 // ---------------- microSD over shared SPI ----------------
@@ -123,17 +197,35 @@ static void testBusSharing() {
                     : "ADXL375 ID wrong after SD use: SD board is not releasing MISO");
 }
 
+// The nRF52 Wire driver has no timeouts: a bus held low hangs it forever.
+// Check both lines idle high (with the internal pull-up) before using it.
+// Returns 0 if OK, else a bitmask: 1 = SDA low, 2 = SCL low.
+static uint8_t i2cBusHeldLow(uint8_t sda, uint8_t scl) {
+  pinMode(sda, INPUT_PULLUP); pinMode(scl, INPUT_PULLUP);
+  delayMicroseconds(200);
+  uint8_t bad = 0;
+  if (digitalRead(sda) == LOW) bad |= 1;
+  if (digitalRead(scl) == LOW) bad |= 2;
+  return bad;
+}
+
 // ---------------- Onboard LSM6DS3 IMU ----------------
 // The Sense's IMU hangs off a second, internal I2C bus (Wire1, P0.07 and
-// P0.27) and needs its power pin driven high. The Seeed LSM6DS3 library
-// only switches to Wire1 under the mbed core, so on this core it would
-// talk to the wrong bus. Bring-up reads WHO_AM_I directly instead. The
-// logger firmware will handle the gyro properly.
+// P0.27) and needs its power pin driven high. Bring-up reads WHO_AM_I
+// directly, with no library, so a failure here points at the board or
+// the core rather than at a library's pin choice.
 static void testImu() {
   char buf[96];
   pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT);
   digitalWrite(PIN_LSM6DS3TR_C_POWER, HIGH);
   delay(50);
+  uint8_t bad = i2cBusHeldLow(PIN_WIRE1_SDA, PIN_WIRE1_SCL);
+  if (bad) {
+    snprintf(buf, sizeof buf, "internal bus held low (SDA %s, SCL %s): IMU unpowered or on other pins",
+             (bad & 1) ? "LOW" : "ok", (bad & 2) ? "LOW" : "ok");
+    report("LSM6DS3 (onboard)", false, buf);
+    return;
+  }
   Wire1.begin();
   Wire1.beginTransmission(0x6A);
   Wire1.write(0x0F);                       // WHO_AM_I
@@ -149,8 +241,19 @@ static void testImu() {
 
 // ---------------- HT16K33 display over I2C ----------------
 static void testDisplay() {
+  uint8_t bad = i2cBusHeldLow(PIN_WIRE_SDA, PIN_WIRE_SCL);
+  if (bad) {
+    report("HT16K33 display", false, (bad & 1) ? "SDA (D4) held low" : "SCL (D5) held low");
+    return;
+  }
+  Wire.begin();
   Wire.setClock(100000);   // long cable to the bars: keep it slow
+  // Probe with one data byte. The nRF52 Wire driver has no timeouts,
+  // and a zero-length write never raises TXSTARTED, so an address-only
+  // probe hangs forever. 0x21 is the HT16K33 "oscillator on" command,
+  // which begin() sends anyway.
   Wire.beginTransmission(DISPLAY_ADDR);
+  Wire.write(0x21);
   if (Wire.endTransmission() != 0) {
     report("HT16K33 display", false, "no ACK at 0x70. Check D (SDA=D4), C (SCL=D5), +, -, pull-ups.");
     return;
@@ -165,7 +268,6 @@ static void testDisplay() {
 
 // ---------------- Button ----------------
 static void testButton() {
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
   bool pressed = digitalRead(PIN_BUTTON) == LOW;
   report("Button", true, pressed ? "reads PRESSED now (should be released)" : "reads released");
 }
@@ -195,35 +297,41 @@ static void testBattery() {
 
 void setup() {
   Serial.begin(115200);
-  uint32_t t0 = millis();
-  while (!Serial && millis() - t0 < 5000) {}
-  Serial.println();
-  Serial.println("Shredometer Mk2 bring-up");
-  Serial.println("------------------------");
-
   pinMode(PIN_ADXL_CS, OUTPUT); digitalWrite(PIN_ADXL_CS, HIGH);
   pinMode(PIN_SD_CS, OUTPUT);   digitalWrite(PIN_SD_CS, HIGH);
   pinMode(PIN_ADXL_INT1, INPUT);
-
+  pinMode(PIN_BUTTON, INPUT_PULLUP);
   SPI.begin();
-  Wire.begin();
+}
 
-  testAdxl();
-  testSd();
-  testBusSharing();
-  testImu();
-  testDisplay();
-  testButton();
-  testBattery();
-
+// The tests run once a host opens the port, not at boot, so the report
+// is never missed. Send 'r' over serial to run them again after wiring
+// the next subsystem; no reflash needed.
+static void runTests() {
+  Serial.println();
+  Serial.println("Shredometer Mk2 bring-up");
   Serial.println("------------------------");
-  Serial.println("Live: peak |a| over each second, button, battery. Shake the board.");
+  // One line before each test, so a hang shows which test it is in.
+  Serial.println("-- ADXL375");         testAdxl();
+  Serial.println("-- microSD");         testSd();
+  Serial.println("-- SPI bus sharing"); testBusSharing();
+  Serial.println("-- LSM6DS3");         testImu();
+  Serial.println("-- display");         testDisplay();
+  Serial.println("-- button");          testButton();
+  Serial.println("-- battery");         testBattery();
+  Serial.println("------------------------");
+  Serial.println("Live: peak |a| over each second, button, battery. Send 'r' to rerun the tests.");
 }
 
 void loop() {
+  static bool ran = false;
   static uint32_t lastPrint = 0;
   static float peak = 0;
   static uint32_t samples = 0;
+
+  if (!Serial) { ran = false; return; }   // wait for a host; rerun on reconnect
+  if (!ran) { delay(300); runTests(); ran = true; }
+  if (Serial.available() && Serial.read() == 'r') { ran = false; return; }
 
   if (okAdxl) {
     int16_t x = adxl.getX(), y = adxl.getY(), z = adxl.getZ();
