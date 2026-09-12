@@ -9,9 +9,12 @@ Claude artifact:
 https://claude.ai/code/artifact/996e3555-30bf-40b6-853d-b44880566f15.
 This file is the copy of record. Update it here.
 
-Status (2026-09-07): all Phase 1 and Phase 2 parts are ordered and en route.
-No firmware port has started. No Mk2 CAD exists yet; `hardware/` still holds
-the v2 cradle for the current enclosure, which Mk2 replaces.
+Status (2026-09-12): all Phase 2 parts are on hand. Phase 1 is skipped: the
+ADXL375 goes straight onto the XIAO. The bench build is in
+[mk2_build.md](mk2_build.md), with the bring-up sketch in
+`Shredometer_Mk2_Bringup/`. No logger firmware yet. No Mk2 CAD yet;
+`hardware/` still holds the v2 cradle for the current enclosure, which Mk2
+replaces.
 
 ## Why a rebuild, not a part swap
 
