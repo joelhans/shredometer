@@ -16,7 +16,7 @@ All logic is 3.3 V. Every module gets its power from the XIAO's 3V3 pin.
 
 | XIAO pin | nRF52 port | Goes to |
 |---|---|---|
-| 3V3 | | ADXL375 VIN, microSD 5V (its regulator accepts 3.3 to 6 V), display +, both pull-ups |
+| 3V3 | | ADXL375 VIN, microSD **3V** (not 5V, see below), display +, both pull-ups |
 | GND | | ADXL375 GND, microSD GND, display -, button, switch |
 | D8 | P1.13 | SCK: ADXL375 SCL and microSD CLK |
 | D10 | P1.15 | MOSI: ADXL375 SDA and microSD DI |
@@ -36,6 +36,14 @@ those two leads short and strain-relieve them with a dab of hot glue.
 
 Notes on the choices:
 
+- **microSD power goes to its 3V pin, not its 5V pin.** The 5V pin feeds
+  the breakout's regulator. With only 3.3 V in, the regulator sits at its
+  dropout, and the card browns out during its own initialization, which is
+  its highest-current moment. Symptoms: init errors 0x17 (card stuck in
+  idle) or 0x12 (card lost right after reporting ready), while a meter
+  still shows 3.3 V at idle. Feeding the 3V pin directly bypasses the
+  regulator; Adafruit's forum confirms it as an input on 3.3 V systems.
+  Leave the 5V pin empty and never put 5 V on that board.
 - **One SPI bus, two devices.** The ADXL375 uses SPI mode 3 and the SD card
   uses mode 0. That is fine: each library sets the mode inside its own
   transaction. What matters is that each device releases MISO when its CS
@@ -118,6 +126,22 @@ noise floor of 6300 raw samples a second at 3200 Hz bandwidth, and the
 logger must not report raw single-sample peaks. Lower the bandwidth or
 average a few samples, or both.
 
+**2026-09-13, microSD.** Wired per the table, first with power on the
+breakout's 5V pin: init failed every time (codes 0x17 and 0x12). Moved
+power to the 3V pin: passes. Card 7580 MB FAT32. Write test, 200 x 512 B:
+mean 1.8 ms, worst 38 ms. SPI bus sharing passes: the ADXL375 answers
+after SD traffic. Onboard IMU passes on this board too with the
+high-drive fix. Remaining: display, button, battery.
+
+One trap for anyone probing the MISO line: the ADXL375 breakout has a
+10k pull-down on SDO (it sets the I2C address). With nothing driving the
+bus, MISO reads low against the MCU's pull-up. That is not a fault, and
+it makes "DO stuck low" readings meaningless on this board.
+
+**Logger buffer sizing.** A 38 ms SD stall at 1 kHz and 10 bytes per
+sample is 380 bytes. A 4 KB ring buffer covers ten times that. RAM is not
+a constraint; the nRF52840 has 256 KB.
+
 ## Order of work
 
 Do the steps in this order. Run the bring-up sketch after each step and
@@ -131,8 +155,8 @@ gives a half-passing report, which is what you want.
    IMU, the button, and the battery.
 3. **Wire power and the ADXL375.** 3V3, GND, SCK, MOSI, MISO, CS, INT1.
    Expect `PASS ADXL375` with ID 0xE5 and about 1.0 g at rest.
-4. **Wire the microSD.** Add CLK, DI, DO, CS, and power. Put a formatted
-   FAT32 card in. Expect `PASS microSD`, `PASS microSD write`, and
+4. **Wire the microSD.** Add CLK, DI, DO, CS, and power to its 3V pin.
+   Put a formatted FAT32 card in. Expect `PASS microSD`, `PASS microSD write`, and
    `PASS SPI bus sharing`. Note the worst-case write time; it sets the
    logger's buffer size.
 5. **Wire the display.** D, C, +, -, and the two 2.2k pull-ups. Expect

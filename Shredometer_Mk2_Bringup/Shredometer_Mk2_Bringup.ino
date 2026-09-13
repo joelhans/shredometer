@@ -159,14 +159,50 @@ static void adxlStats() {
 
 // ---------------- microSD over shared SPI ----------------
 static void testSd() {
-  char buf[96];
-  if (!sd.begin(SdSpiConfig(PIN_SD_CS, SHARED_SPI, SD_SCK_MHZ(8)))) {
-    report("microSD", false, "begin() failed. Check CS, CLK, DI, DO, power, and that a card is in.");
-    if (sd.sdErrorCode()) {
-      snprintf(buf, sizeof buf, "sdErrorCode 0x%02X, sdErrorData 0x%02X",
-               sd.sdErrorCode(), sd.sdErrorData());
-      Serial.print("      "); Serial.println(buf);
+  char buf[160];
+  bool ok = sd.begin(SdSpiConfig(PIN_SD_CS, SHARED_SPI, SD_SCK_MHZ(8)));
+  if (!ok) {
+    snprintf(buf, sizeof buf, "begin() at 8 MHz failed: code 0x%02X data 0x%02X. Retrying at 1 MHz...",
+             sd.sdErrorCode(), sd.sdErrorData());
+    Serial.print("      "); Serial.println(buf);
+    delay(200);
+    ok = sd.begin(SdSpiConfig(PIN_SD_CS, SHARED_SPI, SD_SCK_MHZ(1)));
+  }
+  if (!ok) {
+    snprintf(buf, sizeof buf, "code 0x%02X data 0x%02X (0x01 CMD0: no reply; 0x12 CMD58 with data 0: DO stuck low)",
+             sd.sdErrorCode(), sd.sdErrorData());
+    report("microSD", false, buf);
+    // DO idle level, seen straight from the pin. With the card selected and
+    // no clock, a ready card drives DO high. Deselected, the breakout's
+    // buffer should release DO and the line floats.
+    SPI.end();
+    pinMode(PIN_SPI_MISO, INPUT);
+    digitalWrite(PIN_SD_CS, LOW);  delay(2); bool selLow = digitalRead(PIN_SPI_MISO);
+    pinMode(PIN_SPI_MISO, INPUT_PULLUP); delay(1); bool selUp = digitalRead(PIN_SPI_MISO);
+    digitalWrite(PIN_SD_CS, HIGH); delay(2);
+    pinMode(PIN_SPI_MISO, INPUT_PULLDOWN); delay(1); bool deselDown = digitalRead(PIN_SPI_MISO);
+    pinMode(PIN_SPI_MISO, INPUT_PULLUP);   delay(1); bool deselUp = digitalRead(PIN_SPI_MISO);
+    SPI.begin();
+    snprintf(buf, sizeof buf, "DO with card selected: %s (ready card = high). Deselected: %s",
+             selUp ? (selLow ? "high" : "floating") : "driven LOW (busy, browned out, or DO shorted)",
+             (deselDown != deselUp) ? "floating (buffer released, good)" : (deselUp ? "driven high" : "driven LOW"));
+    Serial.print("      "); Serial.println(buf);
+    // Each SD wire as a plain input: does anything else drive it?
+    // A wire that only goes to the SD board's input should float.
+    // The ADXL375's CS stays high so it is out of the picture.
+    SPI.end();
+    struct { const char *name; uint8_t pin; } w[] = {
+      {"CS D2", PIN_SD_CS}, {"CLK D8", PIN_SPI_SCK}, {"DI D10", PIN_SPI_MOSI}, {"DO D9", PIN_SPI_MISO}};
+    Serial.print("      wires as inputs:");
+    for (auto &x : w) {
+      pinMode(x.pin, INPUT_PULLDOWN); delay(1); bool d = digitalRead(x.pin);
+      pinMode(x.pin, INPUT_PULLUP);   delay(1); bool u = digitalRead(x.pin);
+      Serial.print("  "); Serial.print(x.name); Serial.print("=");
+      Serial.print(d != u ? "floating" : (u ? "HIGH" : "LOW"));
     }
+    Serial.println();
+    pinMode(PIN_SD_CS, OUTPUT); digitalWrite(PIN_SD_CS, HIGH);
+    SPI.begin();
     return;
   }
   uint32_t mb = (uint32_t)(sd.card()->sectorCount() / 2048);
