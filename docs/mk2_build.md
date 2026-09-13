@@ -24,8 +24,8 @@ All logic is 3.3 V. Every module gets its power from the XIAO's 3V3 pin.
 | D3 | P0.29 | ADXL375 CS |
 | D2 | P0.28 | microSD CS |
 | D0 | P0.02 | ADXL375 INT1 (data ready; wire it now, the logger uses it later) |
-| D4 | P0.04 | SDA: display D, with 2.2k to 3V3 |
-| D5 | P0.05 | SCL: display C, with 2.2k to 3V3 |
+| D4 | P0.04 | SDA: display SDA, with 10k to 3V3 |
+| D5 | P0.05 | SCL: display SCL, with 10k to 3V3 |
 | D1 | P0.03 | Start button; other side to GND (`INPUT_PULLUP`, pressed = LOW) |
 | BAT+ pad | | Slide switch, then LiPo red wire |
 | BAT- pad | | LiPo black wire |
@@ -142,6 +142,13 @@ it makes "DO stuck low" readings meaningless on this board.
 sample is 380 bytes. A 4 KB ring buffer covers ten times that. RAM is not
 a constraint; the nRF52840 has 256 KB.
 
+**2026-09-13, display.** HT16K33 backpack on D4/D5 with one 10k pull-up
+per line to 3V3, powered from 3V3, over the existing bar cable. Passes:
+ACK at 0x70, shows 8888, then the live peak. Brightness outdoors not yet
+judged; that decides the boost converter and level shifter. Note the
+backpack's pins are labelled SDA and SCL, not D and C. Remaining: button,
+switch and battery.
+
 ## Order of work
 
 Do the steps in this order. Run the bring-up sketch after each step and
@@ -159,8 +166,8 @@ gives a half-passing report, which is what you want.
    Put a formatted FAT32 card in. Expect `PASS microSD`, `PASS microSD write`, and
    `PASS SPI bus sharing`. Note the worst-case write time; it sets the
    logger's buffer size.
-5. **Wire the display.** D, C, +, -, and the two 2.2k pull-ups. Expect
-   8888 on the display.
+5. **Wire the display.** SDA to D4, SCL to D5, + and -, and one 10k
+   pull-up from each data line to 3V3. Expect 8888 on the display.
 6. **Wire the button.** Expect the live line to flip to PRESSED.
 7. **Solder the switch and the battery.** Expect a battery reading between
    3.0 and 4.2 V. Unplug USB and confirm the board runs on the cell.
