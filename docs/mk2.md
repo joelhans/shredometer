@@ -140,8 +140,9 @@ Prices are approximate US retail as of 2026-08-30.
 | LiPo cell, 500 to 1000 mAh, about 30 x 20 x 6 mm | With protection circuit and JST fitted. Not a bare pouch cell. | 2 | 1 | 9 |
 | Tactile button + slide switch | Start and power. Wire the button to `INPUT_PULLUP`; the current external pull-down is unnecessary. | 2 | 2 | 2 |
 | Resistors and capacitors: 2.2k, 0.1 µF, 10 µF | Pull-ups and decoupling near every module. | 2 | - | 6 |
-| I2C level shifter, BSS138, 4-channel | The bar display runs at 5 V; the XIAO at 3.3 V. Only if the backpack is too dim at 3.3 V. | 2, maybe | 1 | 4 |
-| 5 V boost converter, about 500 mA | Same condition as the level shifter. A LiPo tops out at 4.2 V, below the HT16K33's stated minimum. | 2, maybe | 1 | 5 |
+| I2C level shifter, BSS138, 4-channel (Adafruit 757) | The bar display runs at 5 V; the XIAO at 3.3 V. Required once the display is on the boost. | 2 | 1 | 4 |
+| 5 V boost converter (Adafruit MiniBoost 4654) | Required, not optional: the display's LED current through the XIAO's 3.3 V regulator corrupts the ADXL375 (see the bench log). Runs the display from the battery. | 2 | 1 | 5 |
+| 100 µF electrolytic capacitors, 6.3 V or more | One at the backpack's power pins, one at the boost input. | 2 | 2 | 1 |
 | Second XIAO nRF52840, plain | The bar end's brain once the cable goes. | 3 | 1 | 16 |
 | Second LiPo cell | Bar end. 50 to 90 mA with the display lit, so 500 mAh is several rides. | 3 | 1 | 9 |
 | Custom PCB, 5 pcs | Boards are about $5; shipping is most of it. | 3 | 5 | 25 |

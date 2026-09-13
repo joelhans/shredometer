@@ -31,6 +31,11 @@ const uint8_t PIN_BUTTON    = 1;   // start button, to GND, INPUT_PULLUP
 const uint8_t PIN_HICHG     = PIN_CHARGING_CURRENT;  // P0.13: LOW = 100 mA charge, input = 50 mA
 
 const uint8_t DISPLAY_ADDR  = 0x70;
+// 0 to 15. Full brightness with all segments lit pulls well over 100 mA
+// in pulses off the shared 3.3 V rail, and the ADXL375 reads that as
+// noise on every axis (measured 2026-09-13: 0.5 g rms and bit errors on
+// the SPI bus at 15; 0.2 g rms and none with the display unpowered).
+const uint8_t DISPLAY_BRIGHTNESS = 4;
 
 // ---------------- Devices ----------------
 Adafruit_ADXL375 adxl(PIN_ADXL_CS, &SPI, 12345);
@@ -38,6 +43,7 @@ SdFs sd;
 Adafruit_7segment display;
 
 bool okAdxl = false, okSd = false, okImu = false, okDisplay = false;
+bool displayUp = false;   // display.begin() has run; survives reruns
 
 static void report(const char *name, bool ok, const char *detail = "") {
   Serial.print(ok ? "PASS  " : "FAIL  ");
@@ -90,7 +96,16 @@ static void testAdxl() {
   if (mag < 0.7f || mag > 1.3f) {
     Serial.println("      WARN: |a| at rest is not near 1 g. Hold the board still and rerun.");
   }
-  adxlStats();
+  if (displayUp) {
+    // On a rerun the display is up: measure with it blanked (no LED
+    // current, connection intact) and with every segment lit.
+    display.clear(); display.writeDisplay(); delay(50);
+    Serial.println("      display BLANK:");  adxlStats();
+    display.print(8888); display.writeDisplay(); delay(50);
+    Serial.println("      display 8888:");   adxlStats();
+  } else {
+    adxlStats();
+  }
 }
 
 // Read a register directly, outside the library.
@@ -306,10 +321,10 @@ static void testDisplay() {
     return;
   }
   display.begin(DISPLAY_ADDR);
-  display.setBrightness(15);
+  display.setBrightness(DISPLAY_BRIGHTNESS);
   display.print(8888);
   display.writeDisplay();
-  okDisplay = true;
+  okDisplay = true; displayUp = true;
   report("HT16K33 display", true, "ACK at 0x70, showing 8888. Judge brightness at 3.3 V by eye.");
 }
 
@@ -355,6 +370,7 @@ void setup() {
 // is never missed. Send 'r' over serial to run them again after wiring
 // the next subsystem; no reflash needed.
 static void runTests() {
+  okAdxl = okSd = okImu = okDisplay = false;   // a rerun starts from nothing
   Serial.println();
   Serial.println("Shredometer Mk2 bring-up");
   Serial.println("------------------------");

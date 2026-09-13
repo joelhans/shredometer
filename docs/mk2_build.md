@@ -149,6 +149,22 @@ judged; that decides the boost converter and level shifter. Note the
 backpack's pins are labelled SDA and SCL, not D and C. Remaining: button,
 switch and battery.
 
+**2026-09-13, display current corrupts the sensor.** With the display
+connected and blank: ADXL375 scatter 0.17 g per axis, zero glitches. With
+8888 lit: 0.69 g and 341 glitches in 3000, some all-zero samples on the
+slower library path. Brightness setting does not help (the backpack dims
+by pulse width, so the pulse amplitude is unchanged). A 100 nF at the
+sensor's pins removes the all-zero samples only. Cause: the backpack's
+multiplexed LED current pulses sag the XIAO's 3.3 V regulator and lift the
+shared ground. Fix, ordered: Adafruit MiniBoost 5 V (4654) to run the
+display from the battery, Adafruit BSS138 level shifter (757) for the two
+I2C lines at 5 V, and 100 µF electrolytics at the backpack and the boost
+input. Until then the display is usable for bring-up only, and any sensor
+measurement must be taken with the display blank.
+
+Also noted: the ADXL375 is powered through its 3Vo pin, not VIN, which
+bypasses the breakout's regulator. It works and stays that way.
+
 ## Order of work
 
 Do the steps in this order. Run the bring-up sketch after each step and
