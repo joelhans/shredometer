@@ -87,16 +87,18 @@ wired. Bring-up sketch flashed and reporting. Results with nothing wired:
 ADXL375 fail, microSD fail, display no ACK, button released, battery about
 3.7 V with no cell (the charger's open output). All as expected.
 
-**The onboard IMU does not answer.** Its internal I2C bus (P0.07 SDA,
-P0.27 SCL) reads low on both lines with the MCU's own pull-up, whether the
-IMU supply pin (P1.08) is low or high, and a 9-clock bus unstick does not
-change it. Those two lines are internal to the XIAO module and reach no
-header pin or back pad, so the perfboard cannot be the cause. Either the
-IMU on this unit is faulty or the Seeed board package has a Sense Plus bug
-(a forum thread reports the same symptom on Seeed's other package). Not
-resolved. Decision: proceed without the gyro. The shred score does not use
-it. If it matters later, the clean test is Seeed's mbed package at 2.9.2
-with Seeed's own IMU example.
+**The onboard IMU did not answer, now solved (2026-09-13).** Its internal
+I2C bus (P0.07 SDA, P0.27 SCL) read low on both lines, on two different
+Sense Plus boards, with the IMU supply pin P1.08 driven high. Seeed's
+KiCad source for the Plus shows the IMU and its two 10k bus pull-ups all
+fed from P1.08, exactly like the Sense. The cause: in the nRF52's standard
+GPIO drive, P1.08 sags under the IMU's load and never reaches a high
+level (it reads back low). In high-drive mode (`OUTPUT_H0H1`) it comes up,
+and the bus follows within a millisecond. The plain Sense gets away with
+standard drive; the Plus does not. Any code that powers this IMU on the
+Plus must set the pin to high drive before the library's `begin()`. The
+Seeed LSM6DS3 library does not, so it fails on the Plus as shipped. The
+bring-up sketch does it. Gyro is back on the table.
 
 **2026-09-12, later.** ADXL375 on female-female jumpers to the XIAO
 headers. It answers: ID 0xE5, BW_RATE 0x0F (3200 Hz), DATA_FORMAT 0x0B,
@@ -165,13 +167,14 @@ Two library traps, both hit on 2026-09-12:
 - **Do not install the SdFat library.** The core bundles SdFat 2.2.1, and
   the current library-manager release (2.3.0) fails to compile against this
   core's Print class. If `arduino-cli lib list` shows SdFat, uninstall it.
-- **The Seeed LSM6DS3 library needs the right board target.** The
-  Sense's IMU is on an internal second I2C bus (Wire1), and the library
-  switches to Wire1 only when the variant defines
-  `TARGET_SEEED_XIAO_NRF52840_SENSE` or the `_PLUS` form. This core does
-  define them, so the library works with the matching FQBN. The bring-up
-  sketch still reads WHO_AM_I on Wire1 directly, so a failure points at
-  the board rather than at a library.
+- **The Seeed LSM6DS3 library needs two things on the Sense Plus.** The
+  right board target, so it picks the internal bus (Wire1): this core
+  defines `TARGET_SEEED_XIAO_NRF52840_SENSE_PLUS`, so that part is fine.
+  And the IMU power pin in high-drive mode, which the library does not do.
+  Call `pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT_H0H1)` and drive it high
+  before `begin()`. See the bench log. Also note `Adafruit_TinyUSB.h` must
+  be included in any sketch that uses `Serial` but no other core library;
+  `Wire.h` or `SPI.h` pull it in, a bare sketch does not link.
 - **Never do an address-only I2C probe on this core.** The nRF52 Wire
   driver has no timeouts, and `endTransmission()` with zero data bytes
   waits forever for a start event that never comes. Always write at least

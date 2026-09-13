@@ -218,12 +218,16 @@ static uint8_t i2cBusHeldLow(uint8_t sda, uint8_t scl) {
 
 // ---------------- Onboard LSM6DS3 IMU ----------------
 // The Sense's IMU hangs off a second, internal I2C bus (Wire1, P0.07 and
-// P0.27) and needs its power pin driven high. Bring-up reads WHO_AM_I
-// directly, with no library, so a failure here points at the board or
-// the core rather than at a library's pin choice.
+// P0.27) and is powered from a GPIO, P1.08, which also feeds the bus
+// pull-ups. On the Sense Plus that pin MUST be in high-drive mode: in
+// standard drive it sags under the IMU's load, the supply never comes
+// up, and the bus reads low (measured 2026-09-13 on two boards). The
+// Seeed LSM6DS3 library uses plain OUTPUT, so it fails on the Plus
+// unless the pin is set up like this before its begin().
+// Bring-up reads WHO_AM_I directly, with no library.
 static void testImu() {
   char buf[96];
-  pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT);
+  pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT_H0H1);
   digitalWrite(PIN_LSM6DS3TR_C_POWER, HIGH);
   delay(50);
   uint8_t bad = i2cBusHeldLow(PIN_WIRE1_SDA, PIN_WIRE1_SCL);

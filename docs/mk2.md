@@ -210,10 +210,11 @@ assembly. Not worth it until the Phase 3 board works.
   shifter.
 - **Storage: keep microSD, read it over USB-C.** The nRF52840 can present
   the card as a USB drive. No card removal, no hatch. Costs firmware work.
-- **Gyro and magnetometer:** the Sense's onboard IMU was to give the gyro
-  for free. On the unit in hand (a Sense Plus) the IMU does not answer; see
-  the bench log in [mk2_build.md](mk2_build.md). Building without the gyro
-  for now. The magnetometer goes away; nothing used it.
+- **Gyro and magnetometer:** the Sense Plus's onboard IMU gives the gyro
+  for free, with one catch: its power pin must be driven in high-drive
+  mode or the IMU never powers up. See the bench log in
+  [mk2_build.md](mk2_build.md). The magnetometer goes away; nothing used
+  it.
 - **Open:** whether the bar end ever gets its own PCB or stays a hand-wired
   XIAO in a printed box. Live with it before deciding.
 - **Open:** the Phase 2 protoboard layout. This gates the Phase 4 case.
