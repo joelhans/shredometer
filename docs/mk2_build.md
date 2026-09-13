@@ -149,6 +149,13 @@ judged; that decides the boost converter and level shifter. Note the
 backpack's pins are labelled SDA and SCL, not D and C. Remaining: button,
 switch and battery.
 
+**2026-09-13, battery pads unreachable.** The XIAO's BAT pads are on its
+underside and the module was already soldered to the perfboard. Fix: the
+second XIAO gets its battery leads first, then replaces the first in place
+(cut the header pins in the gap, pull the stubs one at a time, drop the
+new module into the same holes). The order of work now puts the battery
+leads before mounting.
+
 **2026-09-13, display current corrupts the sensor.** With the display
 connected and blank: ADXL375 scatter 0.17 g per axis, zero glitches. With
 8888 lit: 0.69 g and 341 glitches in 3000, some all-zero samples on the
@@ -171,24 +178,71 @@ Do the steps in this order. Run the bring-up sketch after each step and
 read the report. Each subsystem reports on its own, so a half-wired board
 gives a half-passing report, which is what you want.
 
-1. **Solder the headers.** ADXL375, microSD breakout, XIAO. Tin the iron,
+1. **Solder the battery leads to the XIAO's BAT pads FIRST.** The pads
+   are on the module's underside. Once the module is on the perfboard they
+   cannot be reached. This was learned the hard way on 2026-09-13 and cost
+   a module swap. Route the two leads off the USB end.
+2. **Solder the headers.** ADXL375, microSD breakout, XIAO. Tin the iron,
    flux the pads, one pin at a time. Check for bridges with the beeper.
-2. **Flash the bring-up sketch with nothing wired.** Confirm the toolchain
+3. **Flash the bring-up sketch with nothing wired.** Confirm the toolchain
    and the USB serial link. Expect every test to fail except the onboard
    IMU, the button, and the battery.
-3. **Wire power and the ADXL375.** 3V3, GND, SCK, MOSI, MISO, CS, INT1.
+4. **Wire power and the ADXL375.** 3V3, GND, SCK, MOSI, MISO, CS, INT1.
    Expect `PASS ADXL375` with ID 0xE5 and about 1.0 g at rest.
-4. **Wire the microSD.** Add CLK, DI, DO, CS, and power to its 3V pin.
+5. **Wire the microSD.** Add CLK, DI, DO, CS, and power to its 3V pin.
    Put a formatted FAT32 card in. Expect `PASS microSD`, `PASS microSD write`, and
    `PASS SPI bus sharing`. Note the worst-case write time; it sets the
    logger's buffer size.
-5. **Wire the display.** SDA to D4, SCL to D5, + and -, and one 10k
+6. **Wire the display.** SDA to D4, SCL to D5, + and -, and one 10k
    pull-up from each data line to 3V3. Expect 8888 on the display.
-6. **Wire the button.** Expect the live line to flip to PRESSED.
-7. **Solder the switch and the battery.** Expect a battery reading between
+7. **Wire the button.** Expect the live line to flip to PRESSED.
+8. **Solder the switch and the battery.** Expect a battery reading between
    3.0 and 4.2 V. Unplug USB and confirm the board runs on the cell.
-8. **Measure everything with calipers** and update the footprint table in
+9. **Measure everything with calipers** and update the footprint table in
    [mk2.md](mk2.md). This unblocks the case design.
+
+## Logger firmware
+
+`Shredometer_Mk2/Shredometer_Mk2.ino` is the real logger, distinct from
+the bring-up sketch. Differences from bring-up, and why:
+
+- **ADXL375 FIFO, not single-sample reads.** The chip has a 32-entry FIFO
+  in stream mode. The loop drains it as often as it can rather than
+  reading one sample at a time, so a slow pass through `loop()` (an SD
+  write, say) does not lose samples as long as it is under the FIFO's
+  time cushion. At 1600 Hz that cushion is 20 ms; the bring-up write test
+  measured a worst case of 38 ms, so overruns are expected under load and
+  are counted, not hidden. `BW_RATE` defaults to 1600 Hz rather than
+  3200 Hz: half the bandwidth for about 1.4x lower noise, still comfortably
+  above anything a bike hit produces, and double the FIFO's time cushion.
+- **Binary log, not CSV.** 8 bytes a record instead of about 65 bytes a
+  CSV row, so the card and the bus carry far more samples for the same
+  I/O cost. `scripts/mk2_to_csv.py` converts a log to the CSV
+  `analyze_log.py` already reads, so the existing reports run unchanged.
+- **No display, no button.** The first ride does not need either; the
+  power switch is the start button. A sector's first record is always a
+  time and sequence marker, so gaps and clock drift show up in the file
+  itself even with nothing to read it live.
+- **Onboard IMU included by default,** with the Sense Plus high-drive fix
+  from the bench log baked in, and the "never touch a bus that reads low"
+  guard from bring-up.
+- **Serial commands are optional, for the bench only:** `i` info, `s`
+  stop, `r` start a new file, `d` dump the closed file's raw bytes. None
+  of this is needed for a ride; power on to power off is the whole flow.
+- **LED as a status light** (the same three pins the mbed core drives
+  during `initVariant()`): blue while starting up, off and logging (green
+  blinks every 500 ms) once both the ADXL375 and the SD card are up, solid
+  red if either is missing so a dead sensor doesn't ride silently.
+
+Not yet run end to end on real hardware: the bring-up sketch proved every
+subsystem individually, but the logger's FIFO-draining loop and its file
+lifecycle (`preAllocate`, `truncate`, the header sector) have only been
+tested against a synthetic binary file, not the perfboard.
+
+To try it: `scripts/flash_xiao.sh Shredometer_Mk2`, let it run a minute
+with an SD card in, then `s` to stop and `d` to dump, or pull the card and
+run `python3 scripts/mk2_to_csv.py path/to/MK2_000.BIN`. Compare the
+reported sample rate and overrun count against the FIFO cushion above.
 
 ## Toolchain
 

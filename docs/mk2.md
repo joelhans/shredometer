@@ -9,12 +9,18 @@ Claude artifact:
 https://claude.ai/code/artifact/996e3555-30bf-40b6-853d-b44880566f15.
 This file is the copy of record. Update it here.
 
-Status (2026-09-12): all Phase 2 parts are on hand. Phase 1 is skipped: the
-ADXL375 goes straight onto the XIAO. The bench build is in
-[mk2_build.md](mk2_build.md), with the bring-up sketch in
-`Shredometer_Mk2_Bringup/`. No logger firmware yet. No Mk2 CAD yet;
-`hardware/` still holds the v2 cradle for the current enclosure, which Mk2
-replaces.
+Status (2026-09-13): all Phase 2 parts are on hand and wired up through
+the display; the bench log in [mk2_build.md](mk2_build.md) has every
+result. The logger firmware is written: `Shredometer_Mk2/`, plus
+`scripts/mk2_to_csv.py` to convert its binary log into the CSV the
+existing analysis reads. The bring-up sketch stays in
+`Shredometer_Mk2_Bringup/` for wiring a new subsystem. Not yet run on
+real hardware end to end (SD write path only exercised via bring-up, not
+the logger). The first ride does not need the display: the plan is to
+power the logger from the switch alone and mount it on the bike as-is
+inside foam packing in the Mk1 box, ahead of the real Mk2 case. No Mk2
+CAD yet; `hardware/` still holds the v2 cradle for the current enclosure,
+which Mk2 replaces.
 
 ## Why a rebuild, not a part swap
 
@@ -235,6 +241,12 @@ assembly. Not worth it until the Phase 3 board works.
    test. One ride.
 3. Phase 2: port the firmware to the XIAO, binary log, 1 kHz. Build it on
    the 5 x 7 cm protoboard.
-4. Phase 4 CAD: a new parametric SCAD file for the body and lid, sized to
-   the real protoboard. Reuse the bolt interface and the nut scheme from
-   `hardware/bottle_cage_mount.scad`.
+4. Flash `Shredometer_Mk2` to the perfboard XIAO and confirm a full
+   power-on-to-power-off log cycle: file created, sectors written, file
+   closed cleanly. Pull the card and run `scripts/mk2_to_csv.py` on it.
+5. First ride with the perfboard packed in the old enclosure, no display,
+   no button: switch on, ride, switch off. This is the check that the
+   architecture works end to end before committing to Phase 4 CAD.
+6. Phase 4 CAD: a new parametric SCAD file for the body and lid, sized to
+   the real protoboard, measured with calipers. Reuse the bolt interface
+   and the nut scheme from `hardware/bottle_cage_mount.scad`.
