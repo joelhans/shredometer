@@ -17,7 +17,7 @@ All logic is 3.3 V. Every module gets its power from the XIAO's 3V3 pin.
 | XIAO pin | nRF52 port | Goes to |
 |---|---|---|
 | 3V3 | | ADXL375 VIN, microSD **3V** (not 5V, see below), display +, both pull-ups |
-| GND | | ADXL375 GND, microSD GND, display -, button, switch |
+| GND | | ADXL375 GND, microSD GND, display - |
 | D8 | P1.13 | SCK: ADXL375 SCL and microSD CLK |
 | D10 | P1.15 | MOSI: ADXL375 SDA and microSD DI |
 | D9 | P1.14 | MISO: ADXL375 SDO and microSD DO |
@@ -54,9 +54,14 @@ Notes on the choices:
   which the sketch does.
 - **Button.** `INPUT_PULLUP`, button to ground. No external resistor. This
   is the opposite polarity from the Mk1 wiring.
-- **Switch in the battery line.** The simplest safe power switch. With the
-  switch off and USB plugged in, the XIAO runs from USB but the cell does
-  not charge. Turn the switch on to charge.
+- **Switch in the battery line, on one leg only.** LiPo red to the
+  switch's middle pin, switch's outer pin to the XIAO's BAT+ pad, LiPo
+  black straight to BAT-. The switch never touches GND or the 3V3 rail:
+  it is entirely on the raw battery net, which is why it belongs
+  physically near the XIAO's BAT pads rather than wherever "a long edge"
+  first suggested (see the layout diagram below). With the switch off and
+  USB plugged in, the XIAO runs from USB but the cell does not charge.
+  Turn the switch on to charge.
 - **Charge current.** Default is 50 mA. The sketch drives P0.13 low for
   100 mA, which is 0.2 C for a 500 mAh cell. Do not use 100 mA with a cell
   under 200 mAh.
@@ -78,8 +83,8 @@ Physical placement is up to you, but these matter:
    flashing and for USB readout once the case exists.
 3. **microSD at the other short edge**, slot facing out, so a card can go
    in without lifting the board.
-4. **Button and switch on a long edge.** They will poke through the case
-   wall later.
+4. **Switch close to the XIAO's BAT pads,** since it's wired inline with
+   the raw battery leads, not the rail. No button on this build.
 5. **LiPo under the board**, held with a foam pad. Do not put it under
    the ADXL375.
 
@@ -87,6 +92,14 @@ Use male headers on every module, solder the headers into the protoboard,
 and run the 28 AWG silicone wire on the underside. Solder each end of a
 wire before cutting the next one, and check each net with the multimeter's
 continuity beeper before applying power.
+
+## Perfboard layout
+
+A to-scale top and bottom view, drawn 2026-09-13:
+https://claude.ai/code/artifact/c99e428d-f22b-4eea-8c8c-6359c3312635
+It's what caught the switch placement above; use it to dry-fit before
+soldering anything new, and correct it (or ask for a redraw) if the real
+board disagrees.
 
 ## Bench log
 
